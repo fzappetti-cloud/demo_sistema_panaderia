@@ -77,8 +77,8 @@ input[type=search],input[type=text],input[inputmode],select,textarea{background:
 .empty{color:var(--muted);padding:12px 0}
 .total{display:flex;justify-content:space-between;align-items:baseline;font:800 2rem/1 var(--display)}
 .total span:first-child{font:600 .92rem var(--body);color:var(--muted)}
-.pay{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
-.pay button{padding:12px 8px;border:1px solid var(--line);background:var(--surface);border-radius:8px;font-weight:700}
+.pay{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.pay button{padding:8px 2px;font-size:.88rem;white-space:nowrap;border:1px solid var(--line);background:var(--surface);border-radius:8px;font-weight:700}
 .pay button[aria-pressed="true"]{border-color:var(--accent);background:var(--brand-soft);box-shadow:inset 0 0 0 1px var(--accent);color:var(--brand-ink)}
 .chk{display:flex;align-items:center;gap:8px;font-size:.95rem}
 .chk input{width:18px;height:18px;accent-color:var(--accent)}
@@ -256,6 +256,11 @@ th.r,td.r{text-align:right;padding-right:0}
 .pfoot{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:12px;position:sticky;bottom:0;background:var(--surface);padding:10px 0}
 .pfoot .cta{width:auto;padding:12px 22px}
 .pfoot .cta:disabled{opacity:.5}
+
+.mp .mplist{display:flex;flex-direction:column;gap:2px;flex:1;min-height:0;overflow-y:auto}
+.mp .it{font-size:1rem;align-items:center;padding:9px 0 7px}
+.mp .amt{font-size:1.2rem;color:#8FE0B5}
+.mp .bal{font-size:1.1rem}
 /* tablero (monitor) */
 .rail{display:flex;flex-direction:column;gap:8px;min-width:0}
 .rail .search{margin:0}
@@ -306,8 +311,17 @@ th.r,td.r{text-align:right;padding-right:0}
  .main-col>.catalog{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
  .main-col>.catalog>.grid{flex:1 1 auto;min-height:0;overflow-y:auto;align-content:start;grid-auto-rows:max-content;padding:2px 6px 8px 0}
  .prod .im{height:84px}
- .side{position:static;overflow-y:auto;min-height:0;padding-right:2px}
- .mp .it:nth-of-type(n+3){display:none}
+ .side{position:static;overflow:hidden;min-height:0;display:flex;flex-direction:column;gap:10px}
+ .side>.ticket{flex:1 1 0;min-height:230px;gap:8px;padding:12px 14px}
+ .side>.ticket .lines{flex:1 1 auto;min-height:44px;overflow-y:auto}
+ .side>.ticket .total{font-size:1.7rem}
+ .side>.pend{flex:none;max-height:26%;overflow-y:auto;padding:8px 12px}
+ .side>.pend h3{margin:0}
+ .side>.pend .empty{padding:2px 0 0;font-size:.85rem}
+ .side>.mp{flex:0 0 28%;min-height:150px;padding:10px 14px}
+ .side>.ticket .line{padding:6px 0}
+ .side>.ticket .lact button{padding:2px 8px;font-size:.8rem}
+ .sign{padding:10px 0}
  .framed{overflow:auto;height:auto}
  .framed .wrap{height:auto}
 .locked #login{flex:1;align-items:center}
@@ -620,17 +634,17 @@ function renderPend(){
   var l=S.sales.filter(function(x){return x.local===UI.local&&isPend(x)}).sort(function(a,b){return b.ts-a.ts});
   var rows=l.map(function(x){return '<div class="prow"><div><b class="num">'+money(x.total)+'</b><small>'+hhmm(x.ts)+' · '+payName(x.pay)+' · '+x.emp+'</small></div><input class="op" data-op="'+x.id+'" inputmode="numeric" maxlength="4" placeholder="Últ. 4 op." aria-label="Últimos 4 dígitos de la operación"><button class="ok" data-a="acr" data-v="'+x.id+'">Acreditada</button></div>'}).join("");
   el.className="pend"+(l.length?" has":"");
-  el.innerHTML='<h3>Esperando acreditación <span class="cnt2">'+l.length+'</span></h3>'+(rows||'<div class="empty">Todo acreditado. Las transferencias nuevas aparecen acá hasta que las verifiques en tu billetera de Mercado Pago.</div>');
+  el.innerHTML='<h3>Esperando acreditación <span class="cnt2">'+l.length+'</span></h3>'+(rows||'<div class="empty">Sin transferencias pendientes.</div>');
 }
 function renderMP(){
   renderPend();
   var el=$("mp");if(!el)return;
   var today=dayKey(Date.now());
-  var inc=S.sales.filter(function(s){return s.local===UI.local&&dayKey(s.ts)===today&&(s.pay==="qr"||(s.pay==="tr"&&s.acr))});
-  var rows=inc.slice(-4).reverse().map(function(s){return '<div class="it"><span>'+(s.pay==="qr"?"QR":"Transferencia")+'<br><small>'+hhmm(s.ts)+' · '+(s.pay==='qr'?'Confirmado en el posnet':'Acreditado'+(s.acr&&s.acr.op?' · op. '+s.acr.op:''))+'</small></span><b class="num" style="color:#8FE0B5">+'+money(s.total)+'</b></div>'}).join("");
+  var inc=S.sales.filter(function(s){return s.local===UI.local&&dayKey(s.ts)===today&&s.pay==="tr"&&s.acr});
+  var rows=inc.slice().sort(function(x,y){return y.acr.ts-x.acr.ts}).slice(0,40).map(function(x){return '<div class="it"><span><b>'+hhmm(x.acr.ts)+'</b> · '+x.emp+(x.acr.op?'<br><small>op. …'+x.acr.op+'</small>':'')+'</span><b class="num amt">+'+money(x.total)+'</b></div>'}).join("");
   var rs=$("rstat");if(rs){var td=S.sales.filter(function(x){return x.local===UI.local&&dayKey(x.ts)===today});rs.innerHTML='<small>Hoy en '+LOCALES[UI.local].name.replace("Local ","")+'</small><b class="num">'+money(sum(td))+'</b><span>'+td.length+' ventas</span>'}
-  el.innerHTML='<h3>Mercado Pago de hoy <span class="tag2">Simulado</span></h3>'+(rows||'<div class="it"><small>Todavía no entraron cobros digitales.</small></div>')
-   +'<div class="bal"><span>Acreditado hoy</span><span class="num">'+money(sum(inc))+'</span></div><div class="fut">Próxima etapa: estos ingresos se traen solos desde la cuenta real de Mercado Pago.</div>';
+  el.innerHTML='<h3>Transferencias acreditadas <span class="tag2">Simulado</span></h3><div class="mplist">'+(rows||'<div class="it"><small>Todavía no se acreditó ninguna transferencia hoy.</small></div>')+'</div>'
+   +'<div class="bal"><span>Acreditado hoy</span><span class="num">'+money(sum(inc))+'</span></div>';
 }
 function closeWeigh(){$("layer").innerHTML=""}
 
