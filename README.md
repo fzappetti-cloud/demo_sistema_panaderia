@@ -31,8 +31,8 @@ Abrir `index.html` en el navegador, o activar GitHub Pages (Settings > Pages > r
 
 > Es una demo: los usuarios están en el navegador, sin servidor. En producción el acceso va con contraseñas cifradas y validación en el servidor.
 
-## Cotejo de transferencias y QR
-- Una venta por transferencia o QR queda **pendiente de acreditación** y aparece en el panel "Esperando acreditación", siempre a la vista junto al ticket.
+## Cotejo de transferencias (el QR lo confirma el posnet)
+- Una venta por **transferencia** queda **pendiente de acreditación** y aparece en el panel "Esperando acreditación", siempre a la vista junto al ticket.
 - El empleado verifica en su billetera de Mercado Pago y toca **Acreditada** (opcionalmente con los últimos 4 dígitos de la operación). Se registra quién y cuándo.
 - El cierre ciego avisa si quedan pendientes. El dueño puede cruzar el día contra el reporte de Mercado Pago (en la demo, con un reporte de ejemplo simulado).
 - Etapa siguiente: conexión automática con la API de Mercado Pago (requiere servidor y validar el aviso de transferencias al alias).

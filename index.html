@@ -468,7 +468,7 @@ function load(){
   try{var raw=localStorage.getItem(LS);if(raw)S=JSON.parse(raw)}catch(e){}
   if(!S||!S.sales||!S.stock){S=mem||seedData()}
   if(!S.products)S.products=DEFAULT_PRODUCTS.map(function(p){return Object.assign({},p)});
-  S.sales.forEach(function(x){if((x.pay==="tr"||x.pay==="qr")&&x.acr===undefined)x.acr={ts:x.ts+60000,by:x.emp,auto:true}});
+  S.sales.forEach(function(x){if(x.pay==="tr"&&x.acr===undefined)x.acr={ts:x.ts+60000,by:x.emp,auto:true}});
   if(!S.priceLog)S.priceLog=[];
   setProducts();mem=S;
 }
@@ -613,20 +613,20 @@ function renderTicket(){
   var mb=$("mobbar");if(mb)mb.innerHTML='<span>'+UI.cart.length+' ítem'+(UI.cart.length===1?"":"s")+' · <b class="num">'+money(cartTotal())+'</b></span><button data-a="goticket">Ver ticket</button>';
   renderMP();
 }
-function isPend(x){return (x.pay==="tr"||x.pay==="qr")&&!x.acr}
+function isPend(x){return x.pay==="tr"&&!x.acr}
 function renderPend(){
   var el=$("pend");if(!el)return;
   var l=S.sales.filter(function(x){return x.local===UI.local&&isPend(x)}).sort(function(a,b){return b.ts-a.ts});
   var rows=l.map(function(x){return '<div class="prow"><div><b class="num">'+money(x.total)+'</b><small>'+hhmm(x.ts)+' · '+payName(x.pay)+' · '+x.emp+'</small></div><input class="op" data-op="'+x.id+'" inputmode="numeric" maxlength="4" placeholder="Últ. 4 op." aria-label="Últimos 4 dígitos de la operación"><button class="ok" data-a="acr" data-v="'+x.id+'">Acreditada</button></div>'}).join("");
   el.className="pend"+(l.length?" has":"");
-  el.innerHTML='<h3>Esperando acreditación <span class="cnt2">'+l.length+'</span></h3>'+(rows||'<div class="empty">Todo acreditado. Las transferencias y QR nuevos aparecen acá hasta que las verifiques en tu billetera de Mercado Pago.</div>');
+  el.innerHTML='<h3>Esperando acreditación <span class="cnt2">'+l.length+'</span></h3>'+(rows||'<div class="empty">Todo acreditado. Las transferencias nuevas aparecen acá hasta que las verifiques en tu billetera de Mercado Pago.</div>');
 }
 function renderMP(){
   renderPend();
   var el=$("mp");if(!el)return;
   var today=dayKey(Date.now());
-  var inc=S.sales.filter(function(s){return s.local===UI.local&&dayKey(s.ts)===today&&(s.pay==="tr"||s.pay==="qr")&&s.acr});
-  var rows=inc.slice(-4).reverse().map(function(s){return '<div class="it"><span>'+(s.pay==="qr"?"QR":"Transferencia")+'<br><small>'+hhmm(s.ts)+' · Acreditado'+(s.acr&&s.acr.op?' · op. '+s.acr.op:'')+'</small></span><b class="num" style="color:#8FE0B5">+'+money(s.total)+'</b></div>'}).join("");
+  var inc=S.sales.filter(function(s){return s.local===UI.local&&dayKey(s.ts)===today&&(s.pay==="qr"||(s.pay==="tr"&&s.acr))});
+  var rows=inc.slice(-4).reverse().map(function(s){return '<div class="it"><span>'+(s.pay==="qr"?"QR":"Transferencia")+'<br><small>'+hhmm(s.ts)+' · '+(s.pay==='qr'?'Confirmado en el posnet':'Acreditado'+(s.acr&&s.acr.op?' · op. '+s.acr.op:''))+'</small></span><b class="num" style="color:#8FE0B5">+'+money(s.total)+'</b></div>'}).join("");
   var rs=$("rstat");if(rs){var td=S.sales.filter(function(x){return x.local===UI.local&&dayKey(x.ts)===today});rs.innerHTML='<small>Hoy en '+LOCALES[UI.local].name.replace("Local ","")+'</small><b class="num">'+money(sum(td))+'</b><span>'+td.length+' ventas</span>'}
   el.innerHTML='<h3>Mercado Pago de hoy <span class="tag2">Simulado</span></h3>'+(rows||'<div class="it"><small>Todavía no entraron cobros digitales.</small></div>')
    +'<div class="bal"><span>Acreditado hoy</span><span class="num">'+money(sum(inc))+'</span></div><div class="fut">Próxima etapa: estos ingresos se traen solos desde la cuenta real de Mercado Pago.</div>';
@@ -640,7 +640,7 @@ function viewCierre(){
   }
   var f=PAYS.map(function(p){var k=p[0];return '<div class="fld"><label for="c-'+k+'">'+p[1]+'</label><input id="c-'+k+'" class="num" inputmode="numeric" placeholder="Total contado" autocomplete="off"><small>'+PAYHINT[k]+'</small></div>'}).join("");
   return '<div class="blind"><div class="card"><div class="hero"><h2>Cierre ciego de '+UI.emp+'</h2><p>Declarás lo que contaste sin ver cuánto debería haber. El sistema compara y le avisa al dueño.</p></div>'
-   +(function(){var n=S.sales.filter(function(x){return x.local===UI.local&&isPend(x)}).length;return n?'<div class="warn2" role="alert"><b>Hay '+n+' transferencia'+(n===1?"":"s")+' o QR sin acreditar.</b> Verificalas en Mercado Pago antes de cerrar.</div>':""})()+'<div class="fld"><label for="fondo">Fondo de caja al abrir</label><input id="fondo" class="num" inputmode="numeric" placeholder="$ 0" autocomplete="off"></div>'
+   +(function(){var n=S.sales.filter(function(x){return x.local===UI.local&&isPend(x)}).length;return n?'<div class="warn2" role="alert"><b>Hay '+n+' transferencia'+(n===1?"":"s")+' sin acreditar.</b> Verificalas en Mercado Pago antes de cerrar.</div>':""})()+'<div class="fld"><label for="fondo">Fondo de caja al abrir</label><input id="fondo" class="num" inputmode="numeric" placeholder="$ 0" autocomplete="off"></div>'
    +'<div class="row2">'+f+'</div>'
    +'<div class="fld"><label for="obs">Observaciones o motivos de diferencia</label><textarea id="obs" rows="2" placeholder="Opcional"></textarea></div>'
    +'<button class="cta" data-a="cerrar">Finalizar turno y enviar arqueo</button></div></div>';
@@ -775,7 +775,7 @@ document.addEventListener("change",function(e){if(e.target.id==="pcat"){UI.pcat=
 /* conciliación simulada con el reporte de Mercado Pago */
 function mpReport(){
   var today=dayKey(Date.now());
-  var mine=S.sales.filter(function(x){return dayKey(x.ts)===today&&(x.pay==="tr"||x.pay==="qr")&&x.acr});
+  var mine=S.sales.filter(function(x){return dayKey(x.ts)===today&&x.pay==="tr"&&x.acr});
   var rep=mine.slice(0,-1).map(function(x){return {ts:x.ts,total:x.total,m:x.pay}});
   rep.push({ts:Date.now()-3600000,total:3400,m:"tr"});
   var used={},ok=[],solo=[];
@@ -786,7 +786,7 @@ function mpReport(){
 function mpBlock(){
   var r=UI.mprep,pen=S.sales.filter(isPend).length;
   var head='<section class="card" style="margin-top:14px"><div class="head"><div><h3>Conciliación con Mercado Pago <span class="tag2">Simulado</span></h3><div class="note">Al cierre del día se sube el reporte de Mercado Pago y el sistema lo cruza con lo que los empleados marcaron como acreditado.</div></div><button class="ghost" data-a="mprep">Cargar reporte de ejemplo</button></div>';
-  if(!r)return head+'<div class="note">Hoy hay '+pen+' transferencia'+(pen===1?"":"s")+'/QR pendiente'+(pen===1?"":"s")+' de acreditar.</div></section>';
+  if(!r)return head+'<div class="note">Hoy hay '+pen+' transferencia'+(pen===1?"":"s")+' pendiente'+(pen===1?"":"s")+' de acreditar.</div></section>';
   return head+'<div class="kpis" style="margin-top:10px"><div class="kpi"><small>Coinciden</small><b class="num">'+r.ok.length+'</b></div><div class="kpi"><small>Marcadas y no están en Mercado Pago</small><b class="num" style="color:var(--bad)">'+r.solo.length+'</b></div><div class="kpi"><small>En Mercado Pago y sin venta cargada</small><b class="num" style="color:var(--warn)">'+r.sinsis.length+'</b></div></div>'
    +'<div class="tw"><table style="margin-top:8px"><tbody>'+r.solo.map(function(x){return '<tr><td>'+hhmm(x.ts)+'</td><td>'+x.emp+'</td><td class="r num">'+money(x.total)+'</td><td><span class="pill bad">Revisar: no figura en Mercado Pago</span></td></tr>'}).join("")+r.sinsis.map(function(x){return '<tr><td>'+hhmm(x.ts)+'</td><td>—</td><td class="r num">'+money(x.total)+'</td><td><span class="pill warn">Ingresó dinero sin venta cargada</span></td></tr>'}).join("")+'</tbody></table></div></section>';
 }
@@ -869,7 +869,7 @@ document.addEventListener("click",function(e){
     if(UI.edit!==null){toast("Guardá o cancelá la edición de la línea");return}
     var tot=cartTotal(),fc=UI.fc;
     UI.cart.forEach(function(l){if(!PBY[l.pid])return;var cur=S.stock[UI.local][l.pid];S.stock[UI.local][l.pid]=Math.max(0,Math.round((cur-l.qty)*1000)/1000)});
-    S.sales.push({id:"s"+(S.n++),ts:Date.now(),local:UI.local,emp:UI.emp,items:UI.cart.map(function(l){return {pid:l.pid,name:l.name,unit:l.unit,qty:l.qty,price:l.price,amount:l.amount}}),total:tot,pay:UI.pay,fc:fc,facturada:false,acr:(UI.pay==="tr"||UI.pay==="qr")?null:undefined});
+    S.sales.push({id:"s"+(S.n++),ts:Date.now(),local:UI.local,emp:UI.emp,items:UI.cart.map(function(l){return {pid:l.pid,name:l.name,unit:l.unit,qty:l.qty,price:l.price,amount:l.amount}}),total:tot,pay:UI.pay,fc:fc,facturada:false,acr:UI.pay==="tr"?null:undefined});
     var vuelto=(UI.pay==="ef"&&UI.paid!=null&&UI.paid>=tot)?UI.paid-tot:0;save();UI.cart=[];UI.fc=false;UI.paid=null;renderChrome();renderTicket();toast("Venta registrada · "+money(tot)+" · "+payName(UI.pay)+(vuelto?" · Vuelto "+money(vuelto):""));return}
   if(a==="cerrar"){
     var cnt={},ok=true;
