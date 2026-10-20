@@ -189,6 +189,30 @@ th.r,td.r{text-align:right;padding-right:0}
 .tools .tl{display:flex;align-items:center;gap:8px}
 .tools .range button{padding:5px 11px;font-size:.84rem}
 .embed .tools{display:none}
+.locked .tabs,.locked #app{display:none}
+.locked .who{display:none}
+.usr{display:flex;align-items:center;gap:8px;color:#fff;align-self:flex-end}
+.usr .lo{padding:6px 12px;color:#fff;border-color:#8a8f91}
+.fixed{display:flex;flex-direction:column;gap:3px;color:#D8DCDD}
+.fixed small{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase}
+.fixed b{color:#fff;font-size:1rem;padding:8px 0}
+.role{display:inline-block;font-size:.7rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 9px;border-radius:99px;background:var(--surface2);color:var(--ink);border:1px solid var(--line)}
+.r-empleado{background:#DDEFE3;color:#1F5A37;border-color:#B4D8C2}
+.r-supervisor{background:#FFF0CC;color:#7A5200;border-color:#EBD08A}
+.r-admin{background:var(--brand-soft);color:var(--brand-ink);border-color:#EBB6C9}
+[data-theme=dark] .r-empleado,[data-theme=dark] .r-supervisor,[data-theme=dark] .r-admin{background:#33383A;color:#F1E6EA;border-color:#555B5D}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]) .r-empleado,:root:not([data-theme=light]) .r-supervisor,:root:not([data-theme=light]) .r-admin{background:#33383A;color:#F1E6EA;border-color:#555B5D}}
+#login{display:flex;justify-content:center;padding:22px 0}
+#login[hidden]{display:none}
+.lg{width:100%;max-width:440px;display:flex;flex-direction:column;gap:12px}
+.lg label{display:flex;flex-direction:column;gap:5px;font-weight:600;font-size:.9rem}
+.lg input{padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);font-size:1rem}
+.lgerr{color:#B3261E;min-height:1.2em;font-size:.9rem;font-weight:600}
+.perm{display:grid;gap:7px;font-size:.88rem;color:var(--muted);border-top:1px solid var(--line);padding-top:12px}
+.demo summary{cursor:pointer;font-weight:600;font-size:.9rem}
+.accs{display:grid;gap:6px;margin-top:10px}
+.acc{display:flex;align-items:center;gap:8px;flex-wrap:wrap;text-align:left;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);cursor:pointer}
+.acc small{margin-left:auto;color:var(--muted)}
 .framed .sign,.framed .tabs,.framed #app{display:none}
 #frame{display:flex;flex-direction:column;align-items:center;gap:10px;padding:16px 0}
 #frame[hidden]{display:none}
@@ -225,6 +249,7 @@ th.r,td.r{text-align:right;padding-right:0}
       <div class="who" id="who"></div>
     </div></div>
   </header>
+  <section id="login" hidden></section>
   <nav class="tabs" role="tablist" aria-label="Secciones" id="tabs"></nav>
   <main id="app"></main>
   <section id="frame" hidden></section>
@@ -357,9 +382,11 @@ function pendFact(){var from=startOfDay(6);return S.sales.filter(function(s){ret
 function renderChrome(){
   var lo=Object.keys(LOCALES).map(function(k){return '<option value="'+k+'"'+(k===UI.local?" selected":"")+'>'+LOCALES[k].name+'</option>'}).join("");
   var em=LOCALES[UI.local].emps.map(function(e){return '<option'+(e===UI.emp?" selected":"")+'>'+e+'</option>'}).join("");
-  $("who").innerHTML='<label>Local<select id="sel-local">'+lo+'</select></label><label>Atiende<select id="sel-emp">'+em+'</select></label>';
+  var ub=CUR?'<div class="usr"><span class="role r-'+CUR.role+'">'+ROLES[CUR.role]+'</span><b>'+CUR.name+'</b><button data-a="logout" class="ghost lo">Salir</button></div>':"";
+  if(CUR&&CUR.role==="empleado")$("who").innerHTML='<div class="fixed"><small>Local</small><b>'+LOCALES[UI.local].name+'</b></div>'+ub;
+  else $("who").innerHTML='<label>Local<select id="sel-local">'+lo+'</select></label><label>Atiende<select id="sel-emp">'+em+'</select></label>'+ub;
   var low=lowStock().length,pf=pendFact().length;
-  $("tabs").innerHTML=TABS.map(function(t){
+  $("tabs").innerHTML=TABS.filter(function(t){return CUR&&ALLOW[CUR.role].indexOf(t[0])>-1}).map(function(t){
     var c=t[0]==="stock"&&low?'<span class="cnt">'+low+'</span>':t[0]==="fact"&&pf?'<span class="cnt" style="background:var(--graf2)">'+pf+'</span>':"";
     return '<button role="tab" data-a="tab" data-v="'+t[0]+'" aria-selected="'+(UI.tab===t[0])+'">'+t[1]+c+'</button>';
   }).join("");
@@ -556,14 +583,14 @@ function viewDueno(){
    +'<section class="card"><h3>Lo que más se vende</h3><div class="tw"><table style="margin-top:8px"><thead><tr><th>Producto</th><th class="r">Cantidad</th><th class="r">Importe</th></tr></thead><tbody>'+topRows+'</tbody></table></div></section></div>'
    +'<div class="cols"><section class="card"><h3>Por empleado</h3><div class="tw"><table style="margin-top:8px"><thead><tr><th>Empleado</th><th class="r">Tickets</th><th class="r">Ventas</th></tr></thead><tbody>'+(empRows||'<tr><td colspan="3" class="empty">Sin ventas en el período.</td></tr>')+'</tbody></table></div></section>'
    +'<section class="card"><h3>Arqueos de caja</h3><div class="tw"><table style="margin-top:8px"><thead><tr><th>Día</th><th>Turno</th><th class="r">Resultado</th><th></th></tr></thead><tbody>'+arq+'</tbody></table></div></section></div>'
-   +'<div class="foot"><span>Los datos de esta demo son de ejemplo y quedan solo en este navegador.</span><button class="ghost" data-a="reset">'+(UI.confirmReset?"Confirmar: borrar y reiniciar":"Reiniciar datos de ejemplo")+'</button></div>';
+   +'<div class="foot"><span>Los datos de esta demo son de ejemplo y quedan solo en este navegador.</span>'+(can("admin")?'<button class="ghost" data-a="reset">'+(UI.confirmReset?"Confirmar: borrar y reiniciar":"Reiniciar datos de ejemplo")+'</button>':"")+'</div>';
 }
 
 /* ---------- Stock ---------- */
 function viewStock(){
   var cs=["Todas"].concat(CATS).map(function(c){return '<option'+(c===UI.stcat?" selected":"")+'>'+c+'</option>'}).join("");
   var low=lowStock();
-  return '<div class="head"><div><h2>Stock por local</h2><div class="note">Los kilos y unidades bajan solos con cada venta.</div></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="ghost" data-a="newproduct">Nuevo producto</button><button class="ghost" data-a="newtransfer">Transferir entre locales</button></div></div>'
+  return '<div class="head"><div><h2>Stock por local</h2><div class="note">Los kilos y unidades bajan solos con cada venta.</div></div><div style="display:flex;gap:8px;flex-wrap:wrap">'+(can("admin")?'<button class="ghost" data-a="newproduct">Nuevo producto</button>':"")+'<button class="ghost" data-a="newtransfer">Transferir entre locales</button></div></div>'
    +(low.length?'<div class="alert"><span>Stock bajo: '+low.slice(0,4).map(function(x){return x.p.name+' ('+LOCALES[x.lk].name.replace("Local ","")+')'}).join(", ")+(low.length>4?" y "+(low.length-4)+" más":"")+'</span></div>':"")
    +'<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px"><input id="stq" type="search" placeholder="Buscar producto" value="'+UI.stq+'" style="flex:1;min-width:180px"><select id="stcat" aria-label="Categoría">'+cs+'</select></div>'
    +'<section class="card" style="padding:12px 16px"><div class="tw"><table><thead><tr><th>Producto</th><th class="r">Precio</th><th class="r">Centro</th><th class="r">Malvinas</th><th class="r">Acciones</th></tr></thead><tbody id="stbody"></tbody></table></div></section>';
@@ -620,6 +647,9 @@ function viewFact(){
 
 /* ---------- render ---------- */
 function render(){
+  if(!CUR){showLogin();return}
+  document.body.classList.remove("locked");$("login").hidden=true;
+  if(ALLOW[CUR.role].indexOf(UI.tab)<0)UI.tab="caja";
   renderChrome();
   var app=$("app");
   app.innerHTML=UI.tab==="caja"?viewCaja():UI.tab==="cierre"?viewCierre():UI.tab==="dueno"?viewDueno():UI.tab==="stock"?viewStock():viewFact();
@@ -631,6 +661,10 @@ document.addEventListener("click",function(e){
   var el=e.target.closest("[data-a]");if(!el)return;
   var a=el.getAttribute("data-a"),v=el.getAttribute("data-v");
   if(a==="theme"||a==="view"){setPref(a,v);return}
+  if(a==="logout"){logout();return}
+  if(a==="fill"){var u=USERS.filter(function(x){return x.u===v})[0];$("lg-u").value=u.u;$("lg-p").value=u.pw;$("lg-p").focus();return}
+  if(a==="tab"&&CUR&&ALLOW[CUR.role].indexOf(v)<0)return;
+  if((a==="newproduct"||a==="reset")&&!can("admin"))return;
   if(a==="closew"){if(e.target===el||el.tagName==="BUTTON")closeWeigh();return}
   if(a==="tab"){UI.tab=v;UI.confirmReset=false;closeWeigh();render();window.scrollTo(0,0);return}
   if(a==="cat"){UI.cat=v;UI.q="";var qq=$("q");if(qq)qq.value="";renderGrid();return}
@@ -721,6 +755,35 @@ document.addEventListener("keydown",function(e){
   if(e.target.id==="f-qty"){e.preventDefault();formAdd()}
 });
 
+/* acceso por credenciales (demo: usuarios de ejemplo, sin servidor) */
+var ROLES={empleado:"Empleado",supervisor:"Supervisor",admin:"Admin"};
+var ALLOW={empleado:["caja","cierre"],supervisor:["caja","cierre","stock","fact"],admin:["caja","cierre","dueno","stock","fact"]};
+var USERS=[
+ {u:"marta",pw:"marta123",name:"Marta",role:"empleado",local:"centro"},
+ {u:"lucas",pw:"lucas123",name:"Lucas",role:"empleado",local:"centro"},
+ {u:"sofia",pw:"sofia123",name:"Sofía",role:"empleado",local:"malvinas"},
+ {u:"diego",pw:"diego123",name:"Diego",role:"empleado",local:"malvinas"},
+ {u:"supervisor",pw:"super123",name:"Supervisor/a",role:"supervisor"},
+ {u:"admin",pw:"admin123",name:"Fernando",role:"admin"}];
+var CUR=null,LGERR="";
+function can(r){return !!CUR&&(r==="admin"?CUR.role==="admin":r==="supervisor"?CUR.role!=="empleado":true)}
+function startSession(u){CUR=u;if(u.role==="empleado"){UI.local=u.local;UI.emp=u.name}else if(LOCALES[UI.local].emps.indexOf(UI.emp)<0)UI.emp=LOCALES[UI.local].emps[0];UI.cart=[];UI.done=null;UI.tab="caja"}
+function logout(){CUR=null;LGERR="";try{sessionStorage.removeItem("lospinos-sess")}catch(e){}render()}
+function showLogin(){
+  document.body.classList.add("locked");var L=$("login");L.hidden=false;
+  var rows=USERS.map(function(u){return '<button type="button" data-a="fill" data-v="'+u.u+'" class="acc"><span class="role r-'+u.role+'">'+ROLES[u.role]+'</span><b>'+u.name+(u.local?' · '+LOCALES[u.local].name.replace("Local ",""):"")+'</b><small>'+u.u+' / '+u.pw+'</small></button>'}).join("");
+  L.innerHTML='<form class="card lg" id="lgform" autocomplete="off"><h2>Ingresá al sistema</h2><p class="note">Cada persona entra con su usuario y ve solo lo que le corresponde.</p><label>Usuario<input id="lg-u" autocapitalize="none" spellcheck="false" required></label><label>Contraseña<input id="lg-p" type="password" required></label><div class="lgerr" role="alert">'+LGERR+'</div><button class="cta" type="submit">Ingresar</button><div class="perm"><div><span class="role r-empleado">Empleado</span> Caja y cierre ciego de su local.</div><div><span class="role r-supervisor">Supervisor</span> Además: stock, transferencias y facturación.</div><div><span class="role r-admin">Admin</span> Todo: panel del dueño, productos y precios.</div></div><details class="demo"><summary>Usuarios de ejemplo (solo para la demo)</summary><div class="accs">'+rows+'</div></details></form>';
+  renderTools();
+}
+document.addEventListener("submit",function(e){
+  if(e.target.id!=="lgform")return;e.preventDefault();
+  var un=$("lg-u").value.trim().toLowerCase(),pw=$("lg-p").value;
+  var u=USERS.filter(function(x){return x.u===un&&x.pw===pw})[0];
+  if(!u){LGERR="Usuario o contraseña incorrectos.";showLogin();$("lg-u").value=un;return}
+  LGERR="";try{sessionStorage.setItem("lospinos-sess",u.u)}catch(er){}
+  startSession(u);render();window.scrollTo(0,0);
+});
+try{var su=sessionStorage.getItem("lospinos-sess");if(su){var uu=USERS.filter(function(x){return x.u===su})[0];if(uu)startSession(uu)}}catch(e){}
 /* tema y vista */
 var EMBED=(location.hash==="#embed");
 var PREF={theme:"auto",view:"auto"};

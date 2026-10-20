@@ -21,3 +21,12 @@ Abrir `index.html` en el navegador, o activar GitHub Pages (Settings > Pages > r
 ## Tema y vista
 - **Tema**: Claro / Oscuro / Automático (sigue al dispositivo). Se recuerda en el navegador.
 - **Vista**: Automática (responsive real), o simulación de **Celular** (390 px) y **Tablet** (820 px) para mostrar el diseño adaptable desde una computadora.
+
+## Acceso por credenciales (3 niveles)
+| Nivel | Ve y puede | Usuario / clave de ejemplo |
+|---|---|---|
+| Empleado | Caja y cierre ciego de su local (local fijo) | marta / marta123, lucas / lucas123, sofia / sofia123, diego / diego123 |
+| Supervisor | Lo anterior + stock, transferencias y facturación (cualquier local) | supervisor / super123 |
+| Admin | Todo: panel del dueño, alta de productos, reinicio de datos | admin / admin123 |
+
+> Es una demo: los usuarios están en el navegador, sin servidor. En producción el acceso va con contraseñas cifradas y validación en el servidor.
