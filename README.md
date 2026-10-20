@@ -42,3 +42,6 @@ Cambio de precios por producto o por porcentaje sobre un tipo, con vista previa,
 
 ## Media pantalla
 Diseñado para monitores de 19": la Caja se adapta a ~680 px de ancho para trabajar con la billetera de Mercado Pago en la otra mitad. En la demo: Vista > Mitad de pantalla.
+
+## Visor de acreditaciones
+En la Caja, el botón **Acreditaciones** abre una vista principal con las últimas 10 transferencias recibidas en Mercado Pago (simuladas) y un botón **Actualizar** que simula refrescar la billetera: aparecen movimientos nuevos y el sistema avisa cuáles corresponden a una venta pendiente para acreditarla con un toque. El ticket y el panel de pendientes siguen visibles a la derecha.
