@@ -3,14 +3,15 @@
 Demo funcional (un solo archivo HTML, sin instalación) para mostrar cómo sería un sistema de ventas y control a medida para una panadería con dos locales.
 
 ## Qué muestra
-- **Caja:** venta rápida por producto, peso con teclado, 4 medios de pago y pedido de factura.
+- **Caja:** formulario de carga con esquema ABM. El empleado elige el producto (por nombre, código o catálogo), escribe el peso (`0,350` o `350 g`) y lo agrega al ticket. Cada línea se puede **modificar** o **eliminar**. Catálogo agrupado por tipo (Panificación, Especialidades, Bebidas, Lácteos, Almacén / varios) con imagen y búsqueda rápida. Cobro con 4 medios de pago, cálculo de vuelto y pedido de factura.
 - **Cierre ciego:** el cajero declara lo contado sin ver lo esperado; el sistema compara.
 - **Dueño:** ventas por hora y por día, medios de pago, empleados, productos y arqueos.
-- **Stock:** descuenta con cada venta, alerta de stock bajo, ajustes y transferencias entre locales.
+- **Stock:** descuenta con cada venta, alerta de stock bajo, transferencias entre locales y **ABM de productos** (alta, modificación con foto y precio, baja).
 - **Facturación:** lista de ventas a facturar según la regla que defina la contadora.
 
 ## Importante
 - Todos los datos son **de ejemplo** y se guardan solo en el navegador de quien lo abre.
+- Las imágenes de los productos son dibujos provisorios; cada producto admite una foto real desde Stock > Editar.
 - Mercado Pago está **simulado** y la emisión en ARCA **no existe todavía**: son etapas futuras.
 - No subir a este repo datos reales de clientes, precios ni credenciales.
 
