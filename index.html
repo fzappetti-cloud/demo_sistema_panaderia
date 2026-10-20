@@ -590,6 +590,7 @@ function startEdit(i){
 function openLibre(){sheet('<div><h3>Otro producto</h3><div class="note">Para algo que no está cargado en el catálogo.</div></div><div class="fld"><label for="lib-n">Descripción</label><input id="lib-n" type="text" placeholder="Varios" autocomplete="off"></div><div class="fld"><label for="lib-p">Importe</label><input id="lib-p" class="num" inputmode="numeric" placeholder="$" autocomplete="off"></div><button class="cta" data-a="libok">Agregar al ticket</button><button class="ghost" data-a="closew">Cancelar</button>');setTimeout(function(){var i=$("lib-n");if(i)i.focus()},30)}
 function cartTotal(){return UI.cart.reduce(function(a,l){return a+l.amount},0)}
 function paidBlock(){
+  return "";
   var tot=cartTotal();
   if(UI.paid!=null&&(UI.pay!=="ef"||UI.paid<tot))UI.paid=null;
   if(UI.pay!=="ef"||!tot)return "";
