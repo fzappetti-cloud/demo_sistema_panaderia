@@ -239,13 +239,32 @@ th.r,td.r{text-align:right;padding-right:0}
 #f-thumb:empty{display:none}
 .thumb.big:empty{display:none}
 
-/* escritorio: pantalla completa sin scroll de página */
+/* tablero (monitor) */
+.rail{display:flex;flex-direction:column;gap:8px;min-width:0}
+.rail .search{margin:0}
+.rail .cats{margin:0;padding:0}
+.rstat{display:none}
+.hint{color:var(--muted);font-size:.9rem;align-self:center}
+.dockrow{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-top:10px}
+.dockrow .factions{margin:0}
+.form .head{margin-bottom:8px}
+.form:not(:has(#f-cancel:not([hidden]))) .head{display:none}
+.prod.sel{border-color:var(--accent);border-top-color:var(--accent);box-shadow:0 0 0 3px var(--brand-soft)}
+.chips button{padding:10px 16px;font-size:1rem}
+@media (max-width:900px){
+ .pos{display:flex;flex-direction:column;gap:14px}
+ .main-col{display:contents}
+ .form{order:1}.rail{order:2}.catalog{order:3}.side{order:4}
+ .pos>*{min-width:0;max-width:100%}
+ .rail{overflow:hidden}
+ .rail .cats{max-width:100%}
+}
 @media (min-width:901px){
  html{height:100%}
  body{height:100vh;height:100dvh;overflow:hidden;padding-bottom:0}
  .wrap{max-width:none;height:100%;display:flex;flex-direction:column;min-height:0}
  .wrap>*{flex:none}
- .sign{margin-top:4px;padding:18px 0}
+ .sign{margin-top:4px;padding:14px 0}
  .roundel{width:76px;margin:-20px 0}
  .ttl b{font-size:1.6rem}
  .band-in{padding-block:4px}
@@ -253,22 +272,22 @@ th.r,td.r{text-align:right;padding-right:0}
  .tabrow .tools{padding:0 0 6px;flex:none;flex-wrap:nowrap}
  .tabrow .tabs{margin:0}
  .tabs button{padding:9px 16px}
- .form{padding:12px 16px}
- .form .head{margin-bottom:6px!important}
- .form .head .note{display:none}
- .form{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:14px;align-items:end}
- .form>.head{grid-column:1/-1}
- .form .factions{margin:0;flex-wrap:nowrap;white-space:nowrap}
- .sign{padding:14px 0}
  #app{flex:1 1 auto;min-height:0;overflow:auto;padding-bottom:10px}
- .pos{height:100%;align-items:stretch}
- .main-col{display:flex;flex-direction:column;min-height:0;overflow:hidden}
- .main-col>.form{flex:none}
- .main-col>section[aria-label="Catálogo"]{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
- .main-col>section[aria-label="Catálogo"]>*{flex:none}
- .main-col>section[aria-label="Catálogo"]>.grid{flex:1 1 auto;min-height:0;overflow-y:auto;align-content:start;grid-auto-rows:max-content;padding:2px 6px 8px 0}
- .main-col>section[aria-label="Catálogo"]>h3{margin:12px 0 6px!important}
+ .pos{height:100%;grid-template-columns:190px minmax(0,1fr) 370px;gap:14px;align-items:stretch}
+ .rail{min-height:0}
+ .rail .cats{flex-direction:column;overflow-y:auto;overflow-x:hidden;flex:1;gap:6px;min-height:0}
+ .rail .cats button{border-radius:12px;text-align:left;padding:13px 14px;font-size:1rem;display:flex;justify-content:space-between;align-items:center;gap:6px;white-space:normal}
+ .rstat{display:flex;flex-direction:column;gap:1px;background:var(--graf);color:#fff;border-radius:12px;padding:12px 14px}
+ .rstat small{color:#F6CDDB;letter-spacing:.06em;text-transform:uppercase;font-size:.72rem}
+ .rstat b{font:800 1.5rem var(--display)}
+ .rstat span{color:#D8DCDD;font-size:.85rem}
+ .main-col{display:flex;flex-direction:column;min-height:0;overflow:hidden;gap:12px}
+ .main-col>.form{flex:none;padding:12px 14px}
+ .main-col>.catalog{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
+ .main-col>.catalog>.grid{flex:1 1 auto;min-height:0;overflow-y:auto;align-content:start;grid-auto-rows:max-content;padding:2px 6px 8px 0}
+ .prod .im{height:84px}
  .side{position:static;overflow-y:auto;min-height:0;padding-right:2px}
+ .mp .it:nth-of-type(n+3){display:none}
  .framed{overflow:auto;height:auto}
  .framed .wrap{height:auto}
  .locked #login{flex:1;align-items:center}
@@ -432,13 +451,14 @@ function renderChrome(){
 function viewCaja(){
   var cats=["Más vendidos","Todos"].concat(CATS).map(function(c){var n=CATS.indexOf(c)>-1?PRODUCTS.filter(function(p){return p.cat===c}).length:0;return '<button data-a="cat" data-v="'+c+'" aria-pressed="'+(c===UI.cat)+'">'+c+(n?' <span class="tc">'+n+'</span>':'')+'</button>'}).join("");
   var opts=PRODUCTS.map(function(p){return '<option value="'+p.name+'" label="#'+p.code+' · '+(p.unit==="kg"?"por kg":"c/u")+'"></option>'}).join("");
-  return '<div class="pos"><div class="main-col"><section class="card form" aria-label="Carga de producto"><div class="head" style="margin-bottom:12px"><h2 id="ftitle">Cargar producto</h2><span class="note">Elegí el producto, escribí el peso y agregalo al ticket.</span></div>'
-   +'<div class="frow"><div class="fld grow"><label for="f-prod">Producto</label><div class="pwrap"><span class="thumb" id="f-thumb"></span><input id="f-prod" type="text" list="plist" placeholder="Nombre o código" autocomplete="off"></div><datalist id="plist">'+opts+'</datalist></div>'
+  return '<div class="pos"><aside class="rail" aria-label="Tipos de producto"><input class="search" id="q" type="search" placeholder="Buscar…" autocomplete="off" value="'+UI.q+'"><div class="cats">'+cats+'</div><div class="rstat" id="rstat"></div></aside>'
+   +'<div class="main-col"><section class="card form" aria-label="Carga de producto"><div class="head"><h2 id="ftitle">Cargar producto</h2></div>'
+   +'<div class="frow"><div class="fld grow"><label for="f-prod">Producto</label><div class="pwrap"><span class="thumb" id="f-thumb"></span><input id="f-prod" type="text" list="plist" placeholder="Tocá un producto o escribí nombre / código" autocomplete="off"></div><datalist id="plist">'+opts+'</datalist></div>'
    +'<div class="fld"><label for="f-qty" id="f-qlbl">Peso o cantidad</label><input id="f-qty" type="text" inputmode="decimal" placeholder="0,350 o 350 g" autocomplete="off"></div>'
    +'<div class="fld"><label>Precio</label><output id="f-price" class="ro num">—</output></div><div class="fld"><label>Subtotal</label><output id="f-sub" class="ro num">—</output></div></div>'
-   +'<div class="chips" id="f-quick"></div>'
-   +'<div class="factions"><button class="cta" id="f-ok" data-a="fadd">Agregar al ticket</button><button class="ghost" id="f-cancel" data-a="fcancel" hidden>Cancelar edición</button><button class="ghost" data-a="libre">+ Otro producto</button></div></section>'
-   +'<section aria-label="Catálogo"><h3 style="margin:20px 0 8px">Catálogo por tipo</h3><div class="srow"><input class="search" id="q" type="search" placeholder="Búsqueda rápida: nombre, tipo o código" autocomplete="off" value="'+UI.q+'"></div><div class="cats">'+cats+'</div><div class="grid" id="grid"></div></section></div>'
+   +'<div class="dockrow"><div class="chips" id="f-quick"><span class="hint">Tocá un producto y después el peso: se agrega solo.</span></div>'
+   +'<div class="factions"><button class="cta" id="f-ok" data-a="fadd">Agregar</button><button class="ghost" id="f-cancel" data-a="fcancel" hidden>Cancelar edición</button><button class="ghost" data-a="libre">+ Otro</button></div></div></section>'
+   +'<section class="catalog" aria-label="Catálogo"><div class="grid" id="grid"></div></section></div>'
    +'<div class="side"><aside class="ticket" id="ticket" aria-label="Ticket"></aside><div class="mp" id="mp"></div></div></div><div class="mobbar" id="mobbar"></div>';
 }
 function topList(){
@@ -451,7 +471,7 @@ function searchList(){
   return PRODUCTS.filter(function(p){return p.name.toLowerCase().indexOf(q)>-1||String(p.code)===q||p.cat.toLowerCase().indexOf(q)>-1});
 }
 function cardHtml(p){
-  return '<button class="prod" data-a="prod" data-v="'+p.id+'"><span class="im">'+pimg(p)+'</span><span class="bd"><span class="n">'+p.name+'<span class="code">#'+p.code+'</span></span><span class="p"><b class="num">'+money(p.price)+'</b>'+(p.unit==="kg"?'<span class="kg">por kg</span>':'<span>c/u</span>')+'</span></span></button>';
+  return '<button class="prod'+(UI.sel===p.id?" sel":"")+'" data-a="prod" data-v="'+p.id+'"><span class="im">'+pimg(p)+'</span><span class="bd"><span class="n">'+p.name+'<span class="code">#'+p.code+'</span></span><span class="p"><b class="num">'+money(p.price)+'</b>'+(p.unit==="kg"?'<span class="kg">por kg</span>':'<span>c/u</span>')+'</span></span></button>';
 }
 function groupHtml(list){
   var by={};list.forEach(function(p){(by[p.cat]=by[p.cat]||[]).push(p)});
@@ -467,9 +487,16 @@ function renderGrid(){
   var cs=document.querySelectorAll(".cats button");
   for(var i=0;i<cs.length;i++){cs[i].setAttribute("aria-pressed",String(!q&&cs[i].getAttribute("data-v")===UI.cat))}
 }
+function quickAdd(p,q){
+  var i=-1;for(var k=UI.cart.length-1;k>=0;k--){if(UI.cart[k].pid===p.id&&!UI.cart[k].libre){i=k;break}}
+  if(i>-1&&p.unit==="u"){UI.cart[i].qty+=q;UI.cart[i].amount=Math.round(UI.cart[i].price*UI.cart[i].qty)}
+  else UI.cart.push({pid:p.id,name:p.name,unit:p.unit,qty:q,price:p.price,amount:Math.round(p.price*q)});
+  renderTicket();toast("+ "+p.name+" · "+(p.unit==="kg"?qtyTxt({qty:q,unit:"kg"}):q+" u"))
+}
 function selectProd(pp){
+  if(UI.edit===null&&pp.unit==="u"){UI.sel=pp.id;$("f-prod").value=pp.name;$("f-qty").value="";syncForm();quickAdd(pp,1);return}
   $("f-prod").value=pp.name;UI.sel=pp.id;if(UI.edit===null)$("f-qty").value=pp.unit==="u"?"1":"";
-  syncForm();$("f-qty").focus();$("f-qty").select();$("f-prod").scrollIntoView({block:"center",behavior:"smooth"});
+  syncForm();renderGrid();$("f-qty").focus();$("f-qty").select();
 }
 /* formulario de carga: alta (agregar), modificación (editar) y baja (eliminar) de líneas */
 function findProd(txt){
@@ -490,13 +517,13 @@ function syncForm(){
   var p=UI.sel?PBY[UI.sel]:null;
   var ql=$("f-qlbl"),pr=$("f-price"),sb=$("f-sub"),qk=$("f-quick");if(!ql)return;
   var th=$("f-thumb");if(th)th.innerHTML=p?pimg(p):"";
-  if(!p){ql.textContent="Peso o cantidad";pr.textContent="—";sb.textContent="—";qk.innerHTML="";return}
+  if(!p){ql.textContent="Peso o cantidad";pr.textContent="—";sb.textContent="—";qk.innerHTML='<span class="hint">Tocá un producto y después el peso: se agrega solo.</span>';return}
   ql.textContent=p.unit==="kg"?"Peso (kg)":"Cantidad (u)";
   $("f-qty").placeholder=p.unit==="kg"?"0,350 o 350 g":"1";
   pr.textContent=money(p.price)+(p.unit==="kg"?" /kg":" c/u");
   var q=parseQty($("f-qty").value,p.unit);
   sb.textContent=q>0?money(Math.round(p.price*q)):"—";
-  qk.innerHTML=(p.unit==="kg"?[["100 g","0,1"],["¼ kg","0,25"],["½ kg","0,5"],["1 kg","1"]]:[["1","1"],["3","3"],["½ docena","6"],["Docena","12"]]).map(function(c){return '<button data-a="fq" data-v="'+c[1]+'">'+c[0]+'</button>'}).join("");
+  qk.innerHTML=(p.unit==="kg"?[["100 g","0.1"],["250 g","0.25"],["500 g","0.5"],["750 g","0.75"],["1 kg","1"],["1,5 kg","1.5"],["2 kg","2"]]:[["+1","1"],["+3","3"],["+½ docena","6"],["+Docena","12"]]).map(function(c){return '<button data-a="fq" data-v="'+c[1]+'">'+c[0]+'</button>'}).join("");
 }
 function resetForm(){UI.edit=null;UI.sel=null;$("f-prod").value="";$("f-qty").value="";$("ftitle").textContent="Cargar producto";$("f-ok").textContent="Agregar al ticket";$("f-cancel").hidden=true;syncForm()}
 function formAdd(){
@@ -547,6 +574,7 @@ function renderMP(){
   var today=dayKey(Date.now());
   var inc=S.sales.filter(function(s){return s.local===UI.local&&dayKey(s.ts)===today&&(s.pay==="tr"||s.pay==="qr")});
   var rows=inc.slice(-4).reverse().map(function(s){return '<div class="it"><span>'+(s.pay==="qr"?"QR":"Transferencia")+'<br><small>'+hhmm(s.ts)+' · Aprobado</small></span><b class="num" style="color:#8FE0B5">+'+money(s.total)+'</b></div>'}).join("");
+  var rs=$("rstat");if(rs){var td=S.sales.filter(function(x){return x.local===UI.local&&dayKey(x.ts)===today});rs.innerHTML='<small>Hoy en '+LOCALES[UI.local].name.replace("Local ","")+'</small><b class="num">'+money(sum(td))+'</b><span>'+td.length+' ventas</span>'}
   el.innerHTML='<h3>Mercado Pago de hoy <span class="tag2">Simulado</span></h3>'+(rows||'<div class="it"><small>Todavía no entraron cobros digitales.</small></div>')
    +'<div class="bal"><span>Recibido hoy</span><span class="num">'+money(sum(inc))+'</span></div><div class="fut">Próxima etapa: estos ingresos se traen solos desde la cuenta real de Mercado Pago.</div>';
 }
@@ -705,7 +733,10 @@ document.addEventListener("click",function(e){
   if(a==="tab"){UI.tab=v;UI.confirmReset=false;closeWeigh();render();window.scrollTo(0,0);return}
   if(a==="cat"){UI.cat=v;UI.q="";var qq=$("q");if(qq)qq.value="";renderGrid();return}
   if(a==="prod"){selectProd(PBY[v]);return}
-  if(a==="fq"){$("f-qty").value=v;syncForm();$("f-qty").focus();return}
+  if(a==="fq"){
+    var pq=UI.sel?PBY[UI.sel]:null;
+    if(pq&&UI.edit===null){quickAdd(pq,parseFloat(v));return}
+    $("f-qty").value=v;syncForm();$("f-qty").focus();return}
   if(a==="fadd"){formAdd();return}
   if(a==="fcancel"){resetForm();renderTicket();return}
   if(a==="libre"){openLibre();return}
