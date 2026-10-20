@@ -189,6 +189,8 @@ th.r,td.r{text-align:right;padding-right:0}
 .tools .tl{display:flex;align-items:center;gap:8px}
 .tools .range button{padding:5px 11px;font-size:.84rem}
 .embed .tools{display:none}
+.tabrow{display:flex;flex-direction:column-reverse}
+.tabrow .tabs{flex:1;min-width:0}
 .locked .tabs,.locked #app{display:none}
 .locked .who{display:none}
 .usr{display:flex;align-items:center;gap:8px;color:#fff;align-self:flex-end}
@@ -236,13 +238,47 @@ th.r,td.r{text-align:right;padding-right:0}
 .fld{min-width:0}.fld input,.fld select,.fld textarea{width:100%}
 #f-thumb:empty{display:none}
 .thumb.big:empty{display:none}
+
+/* escritorio: pantalla completa sin scroll de página */
+@media (min-width:901px){
+ html{height:100%}
+ body{height:100vh;height:100dvh;overflow:hidden;padding-bottom:0}
+ .wrap{max-width:none;height:100%;display:flex;flex-direction:column;min-height:0}
+ .wrap>*{flex:none}
+ .sign{margin-top:4px;padding:18px 0}
+ .roundel{width:76px;margin:-20px 0}
+ .ttl b{font-size:1.6rem}
+ .band-in{padding-block:4px}
+ .tabrow{flex-direction:row;align-items:flex-end;gap:16px;margin:6px 0 8px}
+ .tabrow .tools{padding:0 0 6px;flex:none;flex-wrap:nowrap}
+ .tabrow .tabs{margin:0}
+ .tabs button{padding:9px 16px}
+ .form{padding:12px 16px}
+ .form .head{margin-bottom:6px!important}
+ .form .head .note{display:none}
+ .form{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:14px;align-items:end}
+ .form>.head{grid-column:1/-1}
+ .form .factions{margin:0;flex-wrap:nowrap;white-space:nowrap}
+ .sign{padding:14px 0}
+ #app{flex:1 1 auto;min-height:0;overflow:auto;padding-bottom:10px}
+ .pos{height:100%;align-items:stretch}
+ .main-col{display:flex;flex-direction:column;min-height:0;overflow:hidden}
+ .main-col>.form{flex:none}
+ .main-col>section[aria-label="Catálogo"]{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
+ .main-col>section[aria-label="Catálogo"]>*{flex:none}
+ .main-col>section[aria-label="Catálogo"]>.grid{flex:1 1 auto;min-height:0;overflow-y:auto;align-content:start;grid-auto-rows:max-content;padding:2px 6px 8px 0}
+ .main-col>section[aria-label="Catálogo"]>h3{margin:12px 0 6px!important}
+ .side{position:static;overflow-y:auto;min-height:0;padding-right:2px}
+ .framed{overflow:auto;height:auto}
+ .framed .wrap{height:auto}
+ .locked #login{flex:1;align-items:center}
+}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 
 </head><body>
 <div class="wrap">
-  <div class="tools" id="tools"></div>
-  <header class="sign">
+    <header class="sign">
     <div class="band"><div class="band-in">
       <img class="roundel" src="logo.png" alt="Panadería Los Pinos Confitería">
       <div class="ttl"><small>Panadería · Confitería</small><b>Sistema de ventas</b></div>
@@ -250,7 +286,7 @@ th.r,td.r{text-align:right;padding-right:0}
     </div></div>
   </header>
   <section id="login" hidden></section>
-  <nav class="tabs" role="tablist" aria-label="Secciones" id="tabs"></nav>
+  <div class="tabrow"><nav class="tabs" role="tablist" aria-label="Secciones" id="tabs"></nav><div class="tools" id="tools"></div></div>
   <main id="app"></main>
   <section id="frame" hidden></section>
 </div>
