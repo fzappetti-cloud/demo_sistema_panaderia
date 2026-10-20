@@ -30,3 +30,15 @@ Abrir `index.html` en el navegador, o activar GitHub Pages (Settings > Pages > r
 | Admin | Todo: panel del dueño, alta de productos, reinicio de datos | admin / admin123 |
 
 > Es una demo: los usuarios están en el navegador, sin servidor. En producción el acceso va con contraseñas cifradas y validación en el servidor.
+
+## Cotejo de transferencias y QR
+- Una venta por transferencia o QR queda **pendiente de acreditación** y aparece en el panel "Esperando acreditación", siempre a la vista junto al ticket.
+- El empleado verifica en su billetera de Mercado Pago y toca **Acreditada** (opcionalmente con los últimos 4 dígitos de la operación). Se registra quién y cuándo.
+- El cierre ciego avisa si quedan pendientes. El dueño puede cruzar el día contra el reporte de Mercado Pago (en la demo, con un reporte de ejemplo simulado).
+- Etapa siguiente: conexión automática con la API de Mercado Pago (requiere servidor y validar el aviso de transferencias al alias).
+
+## Tablero de precios (solo admin)
+Cambio de precios por producto o por porcentaje sobre un tipo, con vista previa, historial de cambios y quién los hizo. Las ventas ya hechas conservan su precio.
+
+## Media pantalla
+Diseñado para monitores de 19": la Caja se adapta a ~680 px de ancho para trabajar con la billetera de Mercado Pago en la otra mitad. En la demo: Vista > Mitad de pantalla.
