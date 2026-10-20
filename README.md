@@ -17,3 +17,7 @@ Demo funcional (un solo archivo HTML, sin instalación) para mostrar cómo serí
 
 ## Cómo verlo
 Abrir `index.html` en el navegador, o activar GitHub Pages (Settings > Pages > rama `main`).
+
+## Tema y vista
+- **Tema**: Claro / Oscuro / Automático (sigue al dispositivo). Se recuerda en el navegador.
+- **Vista**: Automática (responsive real), o simulación de **Celular** (390 px) y **Tablet** (820 px) para mostrar el diseño adaptable desde una computadora.

@@ -1,9 +1,4 @@
-<!doctype html>
-<html lang="es">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Los Pinos · Sistema de ventas (demo)</title>
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Los Pinos · Sistema de ventas (demo)</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Source+Sans+3:wght@400;500;600;700&display=swap">
 <style>
 /* Concepto: el cartel de la confitería. Banda grafito con puntos blancos, rosa de marca como fondo y acento; el rosa oscuro se reserva para acciones y texto. */
@@ -190,6 +185,15 @@ th.r,td.r{text-align:right;padding-right:0}
 .pwrap{display:flex;gap:10px;align-items:center}.pwrap input{flex:1}
 .photo{display:flex;gap:12px;align-items:center}.photo-act{display:flex;flex-direction:column;gap:8px;align-items:flex-start;min-width:0}
 .photo-act input[type=file]{max-width:100%;font-size:.86rem}
+.tools{display:flex;gap:8px 18px;flex-wrap:wrap;align-items:center;justify-content:flex-end;padding-top:12px;color:var(--muted);font-size:.84rem}
+.tools .tl{display:flex;align-items:center;gap:8px}
+.tools .range button{padding:5px 11px;font-size:.84rem}
+.embed .tools{display:none}
+.framed .sign,.framed .tabs,.framed #app{display:none}
+#frame{display:flex;flex-direction:column;align-items:center;gap:10px;padding:16px 0}
+#frame[hidden]{display:none}
+.device{background:#15181a;border-radius:30px;padding:12px;box-shadow:0 8px 30px rgba(0,0,0,.28);max-width:100%}
+.device iframe{display:block;border:0;border-radius:20px;background:var(--bg);width:100%}
 @media (max-width:900px){
   .pos{grid-template-columns:minmax(0,1fr)}
   .side{position:static}
@@ -211,9 +215,9 @@ th.r,td.r{text-align:right;padding-right:0}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 
-</head>
-<body>
+</head><body>
 <div class="wrap">
+  <div class="tools" id="tools"></div>
   <header class="sign">
     <div class="band"><div class="band-in">
       <img class="roundel" src="logo.png" alt="Panadería Los Pinos Confitería">
@@ -223,6 +227,7 @@ th.r,td.r{text-align:right;padding-right:0}
   </header>
   <nav class="tabs" role="tablist" aria-label="Secciones" id="tabs"></nav>
   <main id="app"></main>
+  <section id="frame" hidden></section>
 </div>
 <div id="layer"></div>
 <div id="toast" class="toast" hidden></div>
@@ -625,6 +630,7 @@ function render(){
 document.addEventListener("click",function(e){
   var el=e.target.closest("[data-a]");if(!el)return;
   var a=el.getAttribute("data-a"),v=el.getAttribute("data-v");
+  if(a==="theme"||a==="view"){setPref(a,v);return}
   if(a==="closew"){if(e.target===el||el.tagName==="BUTTON")closeWeigh();return}
   if(a==="tab"){UI.tab=v;UI.confirmReset=false;closeWeigh();render();window.scrollTo(0,0);return}
   if(a==="cat"){UI.cat=v;UI.q="";var qq=$("q");if(qq)qq.value="";renderGrid();return}
@@ -715,10 +721,36 @@ document.addEventListener("keydown",function(e){
   if(e.target.id==="f-qty"){e.preventDefault();formAdd()}
 });
 
+/* tema y vista */
+var EMBED=(location.hash==="#embed");
+var PREF={theme:"auto",view:"auto"};
+try{PREF.theme=localStorage.getItem("lospinos-theme")||"auto"}catch(e){}
+try{PREF.view=localStorage.getItem("lospinos-view")||"auto"}catch(e){}
+if(EMBED){PREF.view="auto";document.body.classList.add("embed")}
+function applyTheme(){var r=document.documentElement;if(PREF.theme==="light"||PREF.theme==="dark")r.setAttribute("data-theme",PREF.theme);else r.removeAttribute("data-theme")}
+function setPref(k,v){
+  PREF[k]=v;try{localStorage.setItem("lospinos-"+k,v)}catch(e){}
+  if(k==="theme"){applyTheme();var f=document.querySelector("#frame iframe");if(f&&f.contentWindow)f.contentWindow.postMessage({lospinos:"theme",v:v},"*")}
+  renderTools();if(k==="view")applyView();
+}
+function seg(k,opts){return '<span class="range" role="group" aria-label="'+k+'">'+opts.map(function(o){return '<button data-a="'+k+'" data-v="'+o[0]+'" aria-pressed="'+(PREF[k]===o[0])+'">'+o[1]+'</button>'}).join("")+'</span>'}
+function renderTools(){
+  $("tools").innerHTML='<div class="tl"><span>Tema</span>'+seg("theme",[["light","Claro"],["dark","Oscuro"],["auto","Automático"]])+'</div><div class="tl"><span>Vista</span>'+seg("view",[["auto","Automática"],["celular","Celular"],["tablet","Tablet"]])+'</div>';
+}
+function applyView(){
+  var fr=$("frame"),on=PREF.view!=="auto"&&!EMBED;
+  document.body.classList.toggle("framed",on);
+  if(!on){fr.hidden=true;fr.innerHTML="";return}
+  var cel=PREF.view==="celular",w=cel?390:820,h=cel?780:1000;
+  fr.hidden=false;
+  fr.innerHTML='<div class="device" style="width:'+(w+24)+'px"><iframe title="Vista de '+(cel?"celular":"tablet")+'" src="'+location.pathname+'#embed" style="height:'+h+'px"></iframe></div><p class="note">Así se ve en '+(cel?"un celular":"una tablet")+' ('+w+' px de ancho). Los datos se comparten con la vista automática.</p>';
+}
+window.addEventListener("message",function(e){if(e.source===window.parent&&e.data&&e.data.lospinos==="theme"){PREF.theme=e.data.v;applyTheme()}});
+applyTheme();renderTools();applyView();
+
 load();
 var h=(location.hash||"").replace("#","");if(["caja","cierre","dueno","stock","fact"].indexOf(h)>-1)UI.tab=h;
 render();
 </script>
 
-</body>
-</html>
+</body></html>
