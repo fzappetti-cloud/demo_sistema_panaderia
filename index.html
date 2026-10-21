@@ -256,6 +256,8 @@ th.r,td.r{text-align:right;padding-right:0}
 .crow.nw{background:var(--brand-soft);border-radius:10px;border-top-color:transparent}
 .pend .ok.nosale{background:var(--surface);color:var(--graf);border:1px solid var(--line)}
 .crow .nv{color:var(--warn);font-style:normal;font-weight:700}
+.pendline{display:flex;align-items:center;gap:8px;font-size:.84rem;color:var(--muted);padding-top:6px;border-top:1px solid var(--line)}
+.pend .ok.nosale:disabled{opacity:.55;cursor:not-allowed}
 .pill.done{background:var(--ok-soft);color:var(--ok)}
 .pend .ph{margin:6px 0 0;font-size:.9rem}
 .pend h3{margin:0 0 8px;font-size:1rem;display:flex;align-items:center;gap:8px}
@@ -744,7 +746,7 @@ function renderPend(){
     var st,sale=null;
     if(e.sid){var sv=S.sales.filter(function(x){return x.id===e.sid})[0];st='<span class="pill done">Acreditada'+(sv?' · '+sv.emp:'')+'</span>'}
     else{for(var k=0;k<l.length;k++){if(l[k].total===e.amount&&am[l[k].id]===e.id){sale=l[k];break}}
-      st='<button class="'+(sale?'ok':'ok nosale')+'" data-a="acrfeed" data-v="'+e.id+'">Acreditar</button>'}
+      st='<button class="'+(sale?'ok':'ok nosale')+'" data-a="acrfeed" data-v="'+e.id+'"'+(sale?'':' disabled')+'>Acreditar</button>'}
     var sub=hhmm(e.ts)+(dayKey(e.ts)===today?'':' · ayer')+(e.sid?'':(sale?' · venta de '+sale.emp+' '+hhmm(sale.ts):' · <em class="nv">sin venta cargada</em>'));
     return '<div class="crow'+(e.sid?"":" nw")+'"><div><b class="num">+'+money(e.amount)+'</b><small>'+sub+'</small></div><div class="mst">'+st+'</div></div>'}).join("");
   var prow=l.map(function(x){var ar=!!am[x.id];return '<div class="prow'+(ar?" arrived":"")+'"><div><b class="num">'+money(x.total)+'</b><small>'+hhmm(x.ts)+' · '+x.emp+(ar?' · <em>Ya llegó</em>':'')+'</small></div><button class="ok" data-a="acr" data-v="'+x.id+'">Acreditada</button></div>'}).join("");
@@ -752,7 +754,7 @@ function renderPend(){
   el.innerHTML='<div class="mpsw"><span>Mercado Pago</span>'+seg("mpmode",[["sim","Simulado"],["real","Real"]])+'</div>'
    +'<div class="livehead"><h3>Transferencias recibidas</h3><div class="mact"><button class="cta" data-a="mprefresh">Actualizar</button><small>'+(UI.mplast?'Actualizado '+UI.mplast:'Sin actualizar')+'</small></div></div>'
    +'<div class="clist">'+(frows||'<div class="empty">Tocá Actualizar para ver las que entraron.</div>')+'</div>'
-   +'<h3 class="ph">Esperando acreditación <span class="cnt2">'+l.length+'</span></h3>'+(prow||'<div class="empty">Sin transferencias pendientes.</div>');
+   +(l.length?'<div class="pendline"><span class="cnt2">'+l.length+'</span> venta'+(l.length===1?'':'s')+' por transferencia esperando el pago</div>':'');
   var nb=Object.keys(am).length,bd=$("mpbadge");if(bd){bd.hidden=!nb;bd.textContent=nb}
 }
 function renderMP(){
