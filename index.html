@@ -1078,7 +1078,7 @@ function mpBlock(){
 }
 function pendFactV(){var l=pendFact();if(CUR&&CUR.role==='empleado')l=l.filter(function(x){return x.local===UI.local});return l}
 function daysLeft(x){return 5-Math.round((startOfDay(0)-new Date(new Date(x.ts).getFullYear(),new Date(x.ts).getMonth(),new Date(x.ts).getDate()).getTime())/86400000)}
-function fcfg(){if(!S.fcfg)S.fcfg={tipo:"C",pv:"0001",last:0};return S.fcfg}
+function fcfg(){if(!S.fcfg)S.fcfg={tipo:"C",pv:"0001",last:0,modo:"dia"};if(!S.fcfg.modo)S.fcfg.modo="dia";return S.fcfg}
 function pad0(n,l){return String(n).padStart(l,"0")}
 function feNum(f){return pad0(f.pv,4)+"-"+pad0(f.nro,8)}
 function emitFe(x,rec){
@@ -1095,15 +1095,28 @@ function fakeQr(seed){
   [[0,0],[n-7,0],[0,n-7]].forEach(function(o){out+='<rect x="'+o[0]+'" y="'+o[1]+'" width="7" height="7" fill="#222"/><rect x="'+(o[0]+1)+'" y="'+(o[1]+1)+'" width="5" height="5" fill="#fff"/><rect x="'+(o[0]+2)+'" y="'+(o[1]+2)+'" width="3" height="3" fill="#222"/>'});
   return out+'</svg>';
 }
+function feGroups(list){
+  var m={};list.forEach(function(x){var k=x.local+"|"+dayKey(x.ts);var g=m[k]=m[k]||{key:k,local:x.local,sales:[],total:0,pays:{}};g.sales.push(x);g.total+=x.total;g.pays[x.pay]=(g.pays[x.pay]||0)+x.total});
+  return Object.keys(m).map(function(k){var g=m[k];g.sales.sort(function(a,b){return a.ts-b.ts});return g}).sort(function(a,b){return a.sales[0].ts-b.sales[0].ts});
+}
+function emitFeGroup(g){
+  var f=emitFe(g.sales[0],null);f.g={n:g.sales.length,total:g.total,local:g.local,pays:g.pays};
+  g.sales.forEach(function(x,i){if(i){x.fe=Object.assign({},f);x.facturada=true}});return f;
+}
+function feInvoices(){
+  var m={};S.sales.forEach(function(x){if(!x.fe)return;var k=feNum(x.fe);var o=m[k]=m[k]||{fe:x.fe,sale:x,total:0,n:0};o.total+=x.total;o.n++});
+  return Object.keys(m).map(function(k){return m[k]}).sort(function(a,b){return b.fe.ts-a.fe.ts});
+}
+function payLine(pays){return PAYS.filter(function(p){return pays[p[0]]}).map(function(p){return p[1]+" "+money(pays[p[0]])}).join(" · ")}
 function openFactura(id){
   var x=S.sales.filter(function(q){return q.id===id})[0];if(!x||!x.fe)return;var f=x.fe;
   var d=new Date(f.fch||f.ts).toLocaleDateString("es-AR"),em=new Date(f.ts).toLocaleDateString("es-AR"),vt=new Date(f.vto).toLocaleDateString("es-AR");
-  var it=x.items.map(function(l){return '<tr><td>'+l.name+'</td><td class="r">'+(l.unit==="kg"?l.qty.toLocaleString("es-AR",{maximumFractionDigits:3})+" kg":l.qty+" u")+'</td><td class="r num">'+money(l.amount)+'</td></tr>'}).join("");
+  var it=f.g?'<tr><td>Ventas del día '+d+' · '+LOCALES[f.g.local].name+' ('+f.g.n+' operaciones)</td><td class="r">1</td><td class="r num">'+money(f.g.total)+'</td></tr>':x.items.map(function(l){return '<tr><td>'+l.name+'</td><td class="r">'+(l.unit==="kg"?l.qty.toLocaleString("es-AR",{maximumFractionDigits:3})+" kg":l.qty+" u")+'</td><td class="r num">'+money(l.amount)+'</td></tr>'}).join("");
   sheet('<div class="fe-doc"><div class="fe-demo">DEMO · sin validez fiscal · no enviada a ARCA</div>'
    +'<div class="fe-top"><div><b>Panadería Los Pinos</b><small>Razón social y CUIT de ejemplo<br>CUIT 20-00000000-0 · Córdoba</small></div><div class="fe-t"><span>'+f.tipo+'</span><small>Cód. '+(f.tipo==="B"?"006":"011")+'</small></div><div class="fe-n"><b>Factura '+f.tipo+'</b><div class="num">Nº '+feNum(f)+'</div><small>Fecha del comprobante '+d+'</small><small>Emitida el '+em+'</small></div></div>'
    +'<div class="fe-rec"><b>Receptor:</b> '+(f.rec?(f.rec.name?f.rec.name+' · ':'')+f.rec.t+' '+f.rec.n:'Consumidor Final · Condición IVA: Consumidor Final')+'</div>'
    +'<table class="fe-tab"><thead><tr><th>Detalle</th><th class="r">Cant.</th><th class="r">Importe</th></tr></thead><tbody>'+it+'</tbody></table>'
-   +'<div class="fe-tot"><span>Forma de pago: '+payName(x.pay)+'</span><b class="num">Total '+money(x.total)+'</b></div>'
+   +'<div class="fe-tot"><span>'+(f.g?'Cobrado con: '+payLine(f.g.pays):'Forma de pago: '+payName(x.pay))+'</span><b class="num">Total '+money(f.g?f.g.total:x.total)+'</b></div>'
    +'<div class="fe-foot">'+fakeQr(f.cae)+'<div><div><b>CAE:</b> <span class="num">'+f.cae+'</span></div><div><b>Vencimiento CAE:</b> '+vt+'</div><small>Emitida por '+f.by+' · en la versión real el CAE lo devuelve ARCA</small></div></div></div>'
    +'<button class="ghost" data-a="closew">Cerrar</button>');
   document.querySelector(".sheet").classList.add("wide");
@@ -1112,19 +1125,21 @@ function viewFact(){
   var pend=pendFactV().sort(function(a,b){return a.ts-b.ts});
   var adm=can("admin"),c=fcfg();
   var chk=PAYS.map(function(p){return '<label class="chk" style="border:1px solid var(--line);border-radius:8px;padding:9px 12px;background:var(--surface)"><input type="checkbox" data-a="factrule" data-v="'+p[0]+'"'+(S.fact[p[0]]?" checked":"")+'> '+p[1]+'</label>'}).join("");
+  var gr=feGroups(pend),dia=c.modo==="dia",hoyK=dayKey(Date.now());
+  var grows=gr.map(function(g){var f0=g.sales[0],dl=daysLeft(f0),open=dayKey(f0.ts)===hoyK;return '<tr><td>'+dayTxt(f0.ts)+(open?' <span class="pill mute">Día en curso</span>':'')+'</td><td>'+LOCALES[g.local].name.replace("Local ","")+'</td><td>'+g.sales.length+' venta'+(g.sales.length===1?'':'s')+'<div class="note">'+payLine(g.pays)+'</div></td><td class="r num"><b>'+money(g.total)+'</b></td><td class="r"><span class="fe-left'+(dl<=1?' hot':'')+'">'+(dl<=0?'Último día':'Quedan '+dl+' días')+'</span></td><td class="r fe-acts"><button class="cta fe-b" data-a="fedia" data-v="'+g.key+'">Registrar factura del día</button></td></tr>'}).join("");
   var rows=pend.slice(0,60).map(function(x){
     return '<tr><td>'+dayTxt(x.ts)+' '+hhmm(x.ts)+'</td><td>'+LOCALES[x.local].name.replace("Local ","")+'</td><td>'+payName(x.pay)+(x.fc?' <span class="pill mute">Pidió factura</span>':"")+'</td><td class="r num"><b>'+money(x.total)+'</b></td><td class="r"><span class="fe-left'+(daysLeft(x)<=1?' hot':'')+'">'+(daysLeft(x)<=0?'Último día':'Quedan '+daysLeft(x)+' días')+'</span></td><td class="r fe-acts"><button class="cta fe-b" data-a="fe1" data-v="'+x.id+'">Registrar factura</button><button class="ghost fe-b" data-a="feid" data-v="'+x.id+'">Con CUIT/DNI</button></td></tr>';
   }).join("");
-  var done=S.sales.filter(function(x){return x.fe}).sort(function(a,b){return b.fe.ts-a.fe.ts});
-  var hoyN=done.filter(function(x){return x.fe.ts>=startOfDay(0)}).length;
-  var drows=done.slice(0,15).map(function(x){return '<tr><td>'+feNum(x.fe)+'</td><td>'+dayTxt(x.fe.ts)+' '+hhmm(x.fe.ts)+'</td><td>'+payName(x.pay)+'</td><td class="r num">'+money(x.total)+'</td><td class="r"><button class="ghost" data-a="fever" data-v="'+x.id+'">Ver</button></td></tr>'}).join("");
+  var done=feInvoices();
+  var hoyN=done.filter(function(o){return o.fe.ts>=startOfDay(0)}).length;
+  var drows=done.slice(0,15).map(function(o){return '<tr><td>'+feNum(o.fe)+'</td><td>'+dayTxt(o.fe.ts)+' '+hhmm(o.fe.ts)+'</td><td>'+(o.fe.g?'Ventas del día '+new Date(o.fe.fch).toLocaleDateString("es-AR")+' · '+o.n+' operaciones':payName(o.sale.pay))+'</td><td class="r num">'+money(o.total)+'</td><td class="r"><button class="ghost" data-a="fever" data-v="'+o.sale.id+'">Ver</button></td></tr>'}).join("");
   var tipo=[["C","Factura C"],["B","Factura B"]].map(function(o){return '<button data-a="fetipo" data-v="'+o[0]+'" aria-pressed="'+(c.tipo===o[0])+'"'+(adm?'':' disabled')+'>'+o[1]+'</button>'}).join("");
-  return '<div class="head"><div><h2>Facturación</h2><div class="note">Facturas a consumidor final de lo que se cobró con QR y débito. Un clic y queda registrada. Se puede facturar hasta 5 días después de la venta.</div></div>'+('<button class="cta" style="width:auto;padding:12px 22px" data-a="feall"'+(pend.length?"":" disabled")+'>Registrar todas ('+pend.length+')</button>')+'</div>'
+  return '<div class="head"><div><h2>Facturación</h2><div class="note">Facturas a consumidor final de lo que se cobró con QR y débito. '+(dia?'Una factura por día con todas las ventas, como la arma hoy Fernando.':'Una factura por cada venta.')+' Un clic y queda registrada. Se puede facturar hasta 5 días después de la venta.</div></div>'+('<button class="cta" style="width:auto;padding:12px 22px" data-a="feall"'+(pend.length?"":" disabled")+'>Registrar todas ('+(dia?gr.length:pend.length)+')</button>')+'</div>'
    +'<div class="fe-banner"><b>Modo demo:</b> el comprobante y el CAE son de prueba y no se envían a ARCA. En la versión real, este mismo botón emite la factura en ARCA y guarda el número y el CAE que ARCA devuelve.</div>'
    +'<div class="kpis" style="margin-bottom:16px"><div class="kpi"><div class="k">Pendientes</div><div class="v num">'+pend.length+'</div></div><div class="kpi"><div class="k">Importe a facturar</div><div class="v num">'+money(sum(pend))+'</div></div><div class="kpi"><div class="k">Registradas hoy</div><div class="v num">'+hoyN+'</div></div></div>'
    +(adm?'<section class="card" style="margin-bottom:16px"><h3>Qué se factura</h3><p class="note" style="margin:6px 0 0">Lo define la contadora. Marcá los medios de pago que correspondan. Además entra toda venta donde el cliente pidió factura. Receptor: Consumidor Final.</p><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">'+chk+'</div>'
-   +'<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px"><span class="note">Comprobante (a confirmar con la contadora)</span><span class="range" role="group" aria-label="Tipo de comprobante">'+tipo+'</span><span class="note">Punto de venta '+c.pv+'</span></div></section>':'')
-   +'<section class="card" style="margin-top:16px"><h3>Pendientes de facturar</h3><div class="tw"><table style="margin-top:8px"><thead><tr><th>Fecha</th><th>Local</th><th>Cobro</th><th class="r">Importe</th><th class="r">Plazo</th><th></th></tr></thead><tbody>'+(rows||'<tr><td colspan="6" class="empty">No hay ventas pendientes de facturar.</td></tr>')+'</tbody></table></div></section>'
+   +'<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px"><span class="note">Comprobante (a confirmar con la contadora)</span><span class="range" role="group" aria-label="Tipo de comprobante">'+tipo+'</span><span class="note">Punto de venta '+c.pv+'</span></div><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px"><span class="note">Cómo se factura (a confirmar con la contadora)</span><span class="range" role="group" aria-label="Modo de facturación"><button data-a="femodo" data-v="dia" aria-pressed="'+dia+'">Una por día</button><button data-a="femodo" data-v="venta" aria-pressed="'+!dia+'">Una por venta</button></span></div></section>':'')
+   +'<section class="card" style="margin-top:16px"><h3>Pendientes de facturar</h3><div class="tw"><table style="margin-top:8px"><thead><tr><th>Fecha</th><th>Local</th><th>'+(dia?'Ventas':'Cobro')+'</th><th class="r">Importe</th><th class="r">Plazo</th><th></th></tr></thead><tbody>'+((dia?grows:rows)||'<tr><td colspan="6" class="empty">No hay ventas pendientes de facturar.</td></tr>')+'</tbody></table></div></section>'
    +'<section class="card" style="margin-top:16px"><h3>Facturas registradas</h3><div class="tw"><table style="margin-top:8px"><thead><tr><th>Número</th><th>Fecha</th><th>Cobro</th><th class="r">Importe</th><th></th></tr></thead><tbody>'+(drows||'<tr><td colspan="5" class="empty">Todavía no se registró ninguna.</td></tr>')+'</tbody></table></div></section>';
 }
 
@@ -1234,8 +1249,10 @@ document.addEventListener("click",function(e){
     S.stock[fr][pid]=Math.round((S.stock[fr][pid]-q2)*1000)/1000;S.stock[to][pid]=Math.round((S.stock[to][pid]+q2)*1000)/1000;save();closeWeigh();render();toast("Transferencia hecha: "+stTxt(PBY[pid],q2)+" de "+PBY[pid].name);return}
   if(a==="cobfe"){var cn=($("cf-n").value||"").replace(/\D/g,""),ct=$("cf-t").value,cm=($("cf-nm").value||"").trim(),rc=null;if(cn){if(ct==="CUIT"?cn.length!==11:(cn.length<7||cn.length>8)){toast(ct==="CUIT"?"El CUIT tiene 11 números":"El DNI tiene 7 u 8 números");return}rc={t:ct,n:cn,name:cm}}UI.feGo={rec:rc};closeWeigh();var cb=document.querySelector('[data-a="cobrar"]');if(cb)cb.click();else UI.feGo=null;return}
   if(a==="fe1"){if(!CUR)return;var xs=S.sales.filter(function(q){return q.id===v})[0];if(!xs||xs.fe)return;var ff=emitFe(xs);save();render();toast("Factura "+ff.tipo+" "+feNum(ff)+" registrada (demo)");return}
-  if(a==="feall"){if(!CUR)return;var pl2=pendFactV();if(!pl2.length)return;sheet('<div><h3>Registrar '+pl2.length+' facturas</h3><div class="note">Se van a emitir '+pl2.length+' facturas '+fcfg().tipo+' a Consumidor Final por '+money(sum(pl2))+' en total.</div></div><button class="cta" data-a="feallok">Registrar todas</button><button class="ghost" data-a="closew">Cancelar</button>');return}
-  if(a==="feallok"){if(!CUR)return;var pl3=pendFactV().sort(function(a,b){return a.ts-b.ts}),first=null,last=null,tt=0;pl3.forEach(function(q){var f2=emitFe(q);if(!first)first=f2;last=f2;tt+=q.total});save();render();if(first)sheet('<div><h3>Facturas registradas</h3><div class="note">'+pl3.length+' facturas '+first.tipo+' a Consumidor Final por '+money(tt)+'.<br>Del '+feNum(first)+' al '+feNum(last)+'.<br><b>Demo:</b> no se enviaron a ARCA.</div></div><button class="cta" data-a="closew">Listo</button>');return}
+  if(a==="fedia"){if(!CUR)return;var gg=feGroups(pendFactV()).filter(function(q){return q.key===v})[0];if(!gg)return;var fg=emitFeGroup(gg);save();render();toast("Factura "+fg.tipo+" "+feNum(fg)+" registrada por "+money(gg.total)+" (demo)");return}
+  if(a==="feall"){if(!CUR)return;var pl2=pendFactV();if(!pl2.length)return;var d2=fcfg().modo==="dia",n2=d2?feGroups(pl2).length:pl2.length;sheet('<div><h3>Registrar '+n2+' factura'+(n2===1?'':'s')+'</h3><div class="note">Se van a emitir '+n2+' factura'+(n2===1?'':'s')+' '+fcfg().tipo+' a Consumidor Final'+(d2?' (una por día y por local)':'')+' por '+money(sum(pl2))+' en total.</div></div><button class="cta" data-a="feallok">Registrar todas</button><button class="ghost" data-a="closew">Cancelar</button>');return}
+  if(a==="feallok"){if(!CUR)return;var pl3=pendFactV().sort(function(a,b){return a.ts-b.ts}),first=null,last=null,tt=0,cnt=0;if(fcfg().modo==="dia"){feGroups(pl3).forEach(function(g){var f2=emitFeGroup(g);if(!first)first=f2;last=f2;tt+=g.total;cnt++})}else{pl3.forEach(function(q){var f2=emitFe(q);if(!first)first=f2;last=f2;tt+=q.total;cnt++})}save();render();if(first)sheet('<div><h3>Facturas registradas</h3><div class="note">'+cnt+' factura'+(cnt===1?'':'s')+' '+first.tipo+' a Consumidor Final por '+money(tt)+'.<br>Del '+feNum(first)+' al '+feNum(last)+'.<br><b>Demo:</b> no se enviaron a ARCA.</div></div><button class="cta" data-a="closew">Listo</button>');return}
+  if(a==="femodo"){if(!can("admin"))return;fcfg().modo=v;save();render();return}
   if(a==="fever"){openFactura(v);return}
   if(a==="feid"){var xi=S.sales.filter(function(q){return q.id===v})[0];if(!xi||xi.fe)return;sheet('<div><h3>Factura con datos del cliente</h3><div class="note">Venta de '+money(xi.total)+' · '+hhmm(xi.ts)+'. Para el cliente que pide factura a su nombre.</div></div><div class="fld"><label for="fe-t">Tipo de documento</label><select id="fe-t"><option>CUIT</option><option>DNI</option></select></div><div class="fld"><label for="fe-n">Número</label><input id="fe-n" class="num" inputmode="numeric" autocomplete="off" placeholder="Sin guiones"></div><div class="fld"><label for="fe-nm">Nombre o razón social (opcional)</label><input id="fe-nm" type="text" autocomplete="off"></div><button class="cta" data-a="feidok" data-v="'+v+'">Registrar factura</button><button class="ghost" data-a="closew">Cancelar</button>');return}
   if(a==="feidok"){var xk=S.sales.filter(function(q){return q.id===v})[0];if(!xk||xk.fe)return;var dn=($("fe-n").value||"").replace(/\D/g,""),dt=$("fe-t").value;if(dt==="CUIT"?dn.length!==11:(dn.length<7||dn.length>8)){toast(dt==="CUIT"?"El CUIT tiene 11 números":"El DNI tiene 7 u 8 números");return}var f3=emitFe(xk,{t:dt,n:dn,name:($("fe-nm").value||"").trim()});save();closeWeigh();render();toast("Factura "+f3.tipo+" "+feNum(f3)+" registrada (demo)");return}
