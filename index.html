@@ -1,4 +1,5 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Los Pinos · Sistema de ventas (demo)</title>
+<meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Source+Sans+3:wght@400;500;600;700&display=swap">
 <style>
 /* Concepto: el cartel de la confitería. Banda grafito con puntos blancos, rosa de marca como fondo y acento; el rosa oscuro se reserva para acciones y texto. */
@@ -242,6 +243,8 @@ th.r,td.r{text-align:right;padding-right:0}
 
 .pend{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
 .pend.has{border-color:var(--accent);box-shadow:0 0 0 3px var(--brand-soft)}
+.mpsw{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid var(--line);font-size:.84rem;color:var(--muted)}
+.mpsw .range button{padding:5px 11px;font-size:.84rem}
 .pend h3{margin:0 0 8px;font-size:1rem;display:flex;align-items:center;gap:8px}
 .cnt2{background:var(--accent);color:#fff;border-radius:99px;padding:1px 9px;font:700 .8rem var(--body)}
 .pend .empty{padding:6px 0;font-size:.88rem}
@@ -384,8 +387,7 @@ th.r,td.r{text-align:right;padding-right:0}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 
-</head><body>
-<div class="wrap">
+</head><body><div class="wrap">
     <header class="sign">
     <div class="band"><div class="band-in">
       <img class="roundel" src="logo.png" alt="Panadería Los Pinos Confitería">
@@ -694,7 +696,8 @@ function renderPend(){
   var l=pendList().reverse(),am=arrivedMap();
   var rows=l.map(function(x){var ar=!!am[x.id];return '<div class="prow'+(ar?" arrived":"")+'"><div><b class="num">'+money(x.total)+'</b><small>'+hhmm(x.ts)+' · '+x.emp+(ar?' · <em>Ya llegó a Mercado Pago</em>':'')+'</small></div><button class="ok" data-a="acr" data-v="'+x.id+'">Acreditada</button></div>'}).join("");
   el.className="pend"+(l.length?" has":"");
-  el.innerHTML='<h3>Esperando acreditación <span class="cnt2">'+l.length+'</span></h3>'+(rows||'<div class="empty">Sin transferencias pendientes.</div>');
+  var mpsw=(CUR&&CUR.role==="admin")?'<div class="mpsw"><span>Mercado Pago</span>'+seg("mpmode",[["sim","Simulado"],["real","Real"]])+'</div>':(MPREAL()?'<div class="mpsw"><span>Mercado Pago</span><b>Conectado en vivo</b></div>':'');
+  el.innerHTML=mpsw+'<h3>Esperando acreditación <span class="cnt2">'+l.length+'</span></h3>'+(rows||'<div class="empty">Sin transferencias pendientes.</div>');
   var nb=Object.keys(am).length,bd=$("mpbadge");if(bd){bd.hidden=!nb;bd.textContent=nb}
 }
 function renderMP(){
@@ -1064,7 +1067,7 @@ function setPref(k,v){
 }
 function seg(k,opts){return '<span class="range" role="group" aria-label="'+k+'">'+opts.map(function(o){return '<button data-a="'+k+'" data-v="'+o[0]+'" aria-pressed="'+(PREF[k]===o[0])+'">'+o[1]+'</button>'}).join("")+'</span>'}
 function renderTools(){
-  $("tools").innerHTML='<div class="tl"><span>Tema</span>'+seg("theme",[["light","Claro"],["dark","Oscuro"],["auto","Automático"]])+'</div><div class="tl"><span>Vista</span>'+seg("view",[["auto","Automática"],["mitad","Mitad de pantalla"],["tablet","Tablet"],["celular","Celular"]])+'</div>'+(CUR&&CUR.role==="admin"?'<div class="tl tlmp"><span>Mercado Pago</span>'+seg("mpmode",[["sim","Simulado"],["real","Real"]])+'</div>':"");
+  $("tools").innerHTML='<div class="tl"><span>Tema</span>'+seg("theme",[["light","Claro"],["dark","Oscuro"],["auto","Automático"]])+'</div><div class="tl"><span>Vista</span>'+seg("view",[["auto","Automática"],["mitad","Mitad de pantalla"],["tablet","Tablet"],["celular","Celular"]])+'</div>';
 }
 function applyView(){
   var fr=$("frame"),on=PREF.view!=="auto"&&!EMBED;
@@ -1081,5 +1084,4 @@ load();
 var h=(location.hash||"").replace("#","");if(["caja","cierre","dueno","stock","fact","precios"].indexOf(h)>-1)UI.tab=h;
 render();
 </script>
-
 </body></html>
