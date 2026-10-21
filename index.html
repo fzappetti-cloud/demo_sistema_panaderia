@@ -245,6 +245,17 @@ th.r,td.r{text-align:right;padding-right:0}
 .pend.has{border-color:var(--accent);box-shadow:0 0 0 3px var(--brand-soft)}
 .mpsw{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid var(--line);font-size:.84rem;color:var(--muted)}
 .mpsw .range button{padding:5px 11px;font-size:.84rem}
+.pend.live{display:flex;flex-direction:column;gap:6px}
+.livehead{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.livehead h3{margin:0}
+.livehead .mact{flex-direction:row;align-items:center;gap:8px}
+.livehead .mact .cta{padding:8px 16px;font-size:.92rem}
+.clist{display:flex;flex-direction:column;overflow-y:auto;min-height:0;flex:1 1 auto}
+.crow{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 4px;border-top:1px solid var(--line)}
+.crow small{display:block;color:var(--muted);font-size:.78rem}
+.crow.nw{background:var(--brand-soft);border-radius:10px;border-top-color:transparent}
+.pill.done{background:var(--ok-soft);color:var(--ok)}
+.pend .ph{margin:6px 0 0;font-size:.9rem}
 .pend h3{margin:0 0 8px;font-size:1rem;display:flex;align-items:center;gap:8px}
 .cnt2{background:var(--accent);color:#fff;border-radius:99px;padding:1px 9px;font:700 .8rem var(--body)}
 .pend .empty{padding:6px 0;font-size:.88rem}
@@ -349,7 +360,7 @@ th.r,td.r{text-align:right;padding-right:0}
  .side>.ticket{flex:1 1 0;min-height:230px;gap:10px;padding:14px}
  .side>.ticket .lines{flex:1 1 auto;min-height:44px;overflow-y:auto}
  .side>.ticket .total{font-size:1.7rem}
- .side>.pend{flex:none;max-height:26%;overflow-y:auto;padding:8px 12px}
+ .side>.pend{flex:1 1 0;min-height:215px;overflow-y:auto;padding:8px 12px}
  .side>.pend h3{margin:0}
  .side>.pend .empty{padding:2px 0 0;font-size:.85rem}
  .side>.mp{flex:0 0 28%;min-height:150px;padding:10px 14px}
@@ -693,11 +704,20 @@ function mpRefreshReal(){
 }
 function renderPend(){
   var el=$("pend");if(!el)return;
-  var l=pendList().reverse(),am=arrivedMap();
-  var rows=l.map(function(x){var ar=!!am[x.id];return '<div class="prow'+(ar?" arrived":"")+'"><div><b class="num">'+money(x.total)+'</b><small>'+hhmm(x.ts)+' · '+x.emp+(ar?' · <em>Ya llegó a Mercado Pago</em>':'')+'</small></div><button class="ok" data-a="acr" data-v="'+x.id+'">Acreditada</button></div>'}).join("");
-  el.className="pend"+(l.length?" has":"");
-  var mpsw='<div class="mpsw"><span>Mercado Pago</span>'+seg("mpmode",[["sim","Simulado"],["real","Real"]])+'</div>';
-  el.innerHTML=mpsw+'<h3>Esperando acreditación <span class="cnt2">'+l.length+'</span></h3>'+(rows||'<div class="empty">Sin transferencias pendientes.</div>');
+  var l=pendList().reverse(),am=arrivedMap(),today=dayKey(Date.now());
+  var fm=S.mpFeed.filter(function(e){return !!e.real===MPREAL()}).sort(function(a,b){return b.ts-a.ts}).slice(0,6);
+  var frows=fm.map(function(e){
+    var st,sale=null;
+    if(e.sid){var sv=S.sales.filter(function(x){return x.id===e.sid})[0];st='<span class="pill done">Acreditada'+(sv?' · '+sv.emp:'')+'</span>'}
+    else{for(var k=0;k<l.length;k++){if(l[k].total===e.amount&&am[l[k].id]===e.id){sale=l[k];break}}
+      st=sale?'<button class="ok" data-a="acrfeed" data-v="'+e.id+'">Acreditar · '+sale.emp+' '+hhmm(sale.ts)+'</button>':'<span class="pill warn">Sin venta cargada</span>'}
+    return '<div class="crow'+(e.sid?"":" nw")+'"><div><b class="num">+'+money(e.amount)+'</b><small>'+hhmm(e.ts)+(dayKey(e.ts)===today?'':' · ayer')+'</small></div><div class="mst">'+st+'</div></div>'}).join("");
+  var prow=l.map(function(x){var ar=!!am[x.id];return '<div class="prow'+(ar?" arrived":"")+'"><div><b class="num">'+money(x.total)+'</b><small>'+hhmm(x.ts)+' · '+x.emp+(ar?' · <em>Ya llegó</em>':'')+'</small></div><button class="ok" data-a="acr" data-v="'+x.id+'">Acreditada</button></div>'}).join("");
+  el.className="pend live"+(Object.keys(am).length?" has":"");
+  el.innerHTML='<div class="mpsw"><span>Mercado Pago</span>'+seg("mpmode",[["sim","Simulado"],["real","Real"]])+'</div>'
+   +'<div class="livehead"><h3>Transferencias recibidas</h3><div class="mact"><button class="cta" data-a="mprefresh">Actualizar</button><small>'+(UI.mplast?'Actualizado '+UI.mplast:'Sin actualizar')+'</small></div></div>'
+   +'<div class="clist">'+(frows||'<div class="empty">Tocá Actualizar para ver las que entraron.</div>')+'</div>'
+   +'<h3 class="ph">Esperando acreditación <span class="cnt2">'+l.length+'</span></h3>'+(prow||'<div class="empty">Sin transferencias pendientes.</div>');
   var nb=Object.keys(am).length,bd=$("mpbadge");if(bd){bd.hidden=!nb;bd.textContent=nb}
 }
 function renderMP(){
