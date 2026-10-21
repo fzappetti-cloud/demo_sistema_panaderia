@@ -254,6 +254,8 @@ th.r,td.r{text-align:right;padding-right:0}
 .crow{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 4px;border-top:1px solid var(--line)}
 .crow small{display:block;color:var(--muted);font-size:.78rem}
 .crow.nw{background:var(--brand-soft);border-radius:10px;border-top-color:transparent}
+.pend .ok.nosale{background:var(--surface);color:var(--graf);border:1px solid var(--line)}
+.crow .nv{color:var(--warn);font-style:normal;font-weight:700}
 .pill.done{background:var(--ok-soft);color:var(--ok)}
 .pend .ph{margin:6px 0 0;font-size:.9rem}
 .pend h3{margin:0 0 8px;font-size:1rem;display:flex;align-items:center;gap:8px}
@@ -742,8 +744,9 @@ function renderPend(){
     var st,sale=null;
     if(e.sid){var sv=S.sales.filter(function(x){return x.id===e.sid})[0];st='<span class="pill done">Acreditada'+(sv?' · '+sv.emp:'')+'</span>'}
     else{for(var k=0;k<l.length;k++){if(l[k].total===e.amount&&am[l[k].id]===e.id){sale=l[k];break}}
-      st=sale?'<button class="ok" data-a="acrfeed" data-v="'+e.id+'">Acreditar · '+sale.emp+' '+hhmm(sale.ts)+'</button>':'<span class="pill warn">Sin venta cargada</span>'}
-    return '<div class="crow'+(e.sid?"":" nw")+'"><div><b class="num">+'+money(e.amount)+'</b><small>'+hhmm(e.ts)+(dayKey(e.ts)===today?'':' · ayer')+'</small></div><div class="mst">'+st+'</div></div>'}).join("");
+      st='<button class="'+(sale?'ok':'ok nosale')+'" data-a="acrfeed" data-v="'+e.id+'">Acreditar</button>'}
+    var sub=hhmm(e.ts)+(dayKey(e.ts)===today?'':' · ayer')+(e.sid?'':(sale?' · venta de '+sale.emp+' '+hhmm(sale.ts):' · <em class="nv">sin venta cargada</em>'));
+    return '<div class="crow'+(e.sid?"":" nw")+'"><div><b class="num">+'+money(e.amount)+'</b><small>'+sub+'</small></div><div class="mst">'+st+'</div></div>'}).join("");
   var prow=l.map(function(x){var ar=!!am[x.id];return '<div class="prow'+(ar?" arrived":"")+'"><div><b class="num">'+money(x.total)+'</b><small>'+hhmm(x.ts)+' · '+x.emp+(ar?' · <em>Ya llegó</em>':'')+'</small></div><button class="ok" data-a="acr" data-v="'+x.id+'">Acreditada</button></div>'}).join("");
   el.className="pend live"+(Object.keys(am).length?" has":"");
   el.innerHTML='<div class="mpsw"><span>Mercado Pago</span>'+seg("mpmode",[["sim","Simulado"],["real","Real"]])+'</div>'
@@ -964,7 +967,7 @@ document.addEventListener("click",function(e){
   if(a==="theme"||a==="view"){setPref(a,v);return}
   if(a==="logout"){logout();return}
   if(a==="acr"){var sx=S.sales.filter(function(x){return x.id===v})[0];if(!sx)return;linkSale(sx);save();renderTicket();renderChrome();toast("Acreditada · "+money(sx.total));return}
-  if(a==="acrfeed"){var fe=S.mpFeed.filter(function(x){return x.id===v})[0];var sa=fe&&pendList().filter(function(x){return x.total===fe.amount})[0];if(!sa){toast("No hay una venta pendiente por ese monto");return}linkSale(sa);save();renderTicket();renderChrome();toast("Acreditada · "+money(sa.total));return}
+  if(a==="acrfeed"){var fe=S.mpFeed.filter(function(x){return x.id===v})[0];var sa=fe&&pendList().filter(function(x){return x.total===fe.amount})[0];if(!sa){toast("No hay una venta pendiente por ese monto");return}sa.acr={ts:Date.now(),by:UI.emp,op:""};fe.sid=sa.id;save();renderTicket();renderChrome();toast("Acreditada · "+money(sa.total));return}
   if(a==="mprefresh"&&MPREAL()){mpRefreshReal();return}
   if(a==="mprefresh"){
     var nmz=["M. Gómez","L. Pérez","C. Díaz","A. Ruiz","S. Torres","J. Álvarez","P. Sosa","V. Molina","R. Acosta","N. Vega"],nn=0,now=Date.now(),have={};
