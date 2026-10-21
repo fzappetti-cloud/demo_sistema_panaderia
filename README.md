@@ -45,3 +45,11 @@ Diseñado para monitores de 19": la Caja se adapta a ~680 px de ancho para traba
 
 ## Visor de acreditaciones
 En la Caja, el botón **Acreditaciones** abre una vista principal con las últimas 10 transferencias recibidas en Mercado Pago (simuladas) y un botón **Actualizar** que simula refrescar la billetera: aparecen movimientos nuevos y el sistema avisa cuáles corresponden a una venta pendiente para acreditarla con un toque. El ticket y el panel de pendientes siguen visibles a la derecha.
+
+## Modo Mercado Pago real (opcional, solo admin)
+Un servidor chico (`netlify/functions/mp-transfers.mjs`) consulta la API de Mercado Pago y devuelve las transferencias recibidas por alias/CVU (aprobadas, últimas 48 h). La página lo usa en el visor de Acreditaciones cuando el admin elige **Mercado Pago > Real**.
+
+- El token de Mercado Pago **nunca** va en el código: se carga como variable de entorno en Netlify (`MP_ACCESS_TOKEN`).
+- `DEMO_KEY` es una clave simple que la página debe enviar para poder consultar.
+- La API no informa quién envió la transferencia: el cotejo se hace por monto, hora y número de operación.
+- En GitHub Pages el modo Real no está disponible (no hay servidor); allí funciona el modo Simulado.

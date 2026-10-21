@@ -364,7 +364,7 @@ th.r,td.r{text-align:right;padding-right:0}
  .rail .cats{flex-direction:row;overflow-x:auto;overflow-y:hidden;flex:1;padding-bottom:2px}
  .rail .cats button{white-space:nowrap;padding:9px 12px;font-size:.95rem}
  .rstat{display:none}
- .tabrow .tools .tl:nth-child(2){display:none}
+ .tabrow .tools .tl:nth-child(2),.tabrow .tools .tlmp{display:none}
  .band-in{gap:10px}
  .ttl b{font-size:1.25rem}
  .roundel{width:60px;margin:-14px 0}
@@ -532,6 +532,7 @@ function renderChrome(){
   var ub=CUR?'<div class="usr"><span class="role r-'+CUR.role+'">'+ROLES[CUR.role]+'</span><b>'+CUR.name+'</b><button data-a="logout" class="ghost lo">Salir</button></div>':"";
   if(CUR&&CUR.role==="empleado")$("who").innerHTML='<div class="fixed"><small>Local</small><b>'+LOCALES[UI.local].name+'</b></div>'+ub;
   else $("who").innerHTML='<label>Local<select id="sel-local">'+lo+'</select></label><label>Atiende<select id="sel-emp">'+em+'</select></label>'+ub;
+  renderTools();
   var low=lowStock().length,pf=pendFact().length;
   $("tabs").innerHTML=TABS.filter(function(t){return CUR&&ALLOW[CUR.role].indexOf(t[0])>-1}).map(function(t){
     var c=t[0]==="stock"&&low?'<span class="cnt">'+low+'</span>':t[0]==="fact"&&pf?'<span class="cnt" style="background:var(--graf2)">'+pf+'</span>':"";
@@ -666,13 +667,27 @@ function isPend(x){return x.pay==="tr"&&!x.acr}
 function pendList(){return S.sales.filter(function(x){return x.local===UI.local&&isPend(x)}).sort(function(a,b){return a.ts-b.ts})}
 function arrivedMap(){
   var used={},map={},l=pendList();
-  S.mpFeed.filter(function(e){return !e.sid}).forEach(function(e){for(var i=0;i<l.length;i++){if(!used[l[i].id]&&l[i].total===e.amount){used[l[i].id]=1;map[l[i].id]=e.id;break}}});
+  S.mpFeed.filter(function(e){return !e.sid&&!!e.real===MPREAL()}).forEach(function(e){for(var i=0;i<l.length;i++){if(!used[l[i].id]&&l[i].total===e.amount){used[l[i].id]=1;map[l[i].id]=e.id;break}}});
   return map;
 }
 function linkSale(sx,by){
   sx.acr={ts:Date.now(),by:by||UI.emp,op:""};
-  var e=S.mpFeed.filter(function(f){return !f.sid&&f.amount===sx.total})[0];
-  if(e)e.sid=sx.id;else S.mpFeed.push({id:"m"+(S.mpN++),ts:Date.now(),amount:sx.total,payer:"Cargada a mano",sid:sx.id});
+  var e=S.mpFeed.filter(function(f){return !f.sid&&f.amount===sx.total&&!!f.real===MPREAL()})[0];
+  if(e)e.sid=sx.id;else S.mpFeed.push({id:"m"+(S.mpN++),ts:Date.now(),amount:sx.total,payer:"Cargada a mano",sid:sx.id,real:MPREAL()});
+}
+function askKey(){sheet('<div><h3>Conectar con Mercado Pago real</h3><div class="note">Escribí la clave de la demo que configuraste en Netlify (DEMO_KEY). Se guarda solo en este navegador.</div></div><div class="fld"><label for="mpkey">Clave de la demo</label><input id="mpkey" type="password" autocomplete="off"></div><button class="cta" data-a="mpkeyok">Conectar</button><button class="ghost" data-a="closew">Cancelar</button>');setTimeout(function(){var k=$("mpkey");if(k)k.focus()},50)}
+function mpRefreshReal(){
+  var st=new Date();st.setHours(0,0,0,0);
+  var btn=document.querySelector('[data-a="mprefresh"]');if(btn){btn.disabled=true;btn.textContent="Actualizando…"}
+  fetch("/api/mp-transfers?since="+encodeURIComponent(st.toISOString()),{headers:{"x-demo-key":mpKey()},cache:"no-store"}).then(function(r){
+    if(r.status===401){try{localStorage.removeItem("lospinos-mpkey")}catch(e){}throw new Error("Clave incorrecta. Volvé a elegir Real para cargarla.")}
+    if(r.status===404)throw new Error("No hay servidor conectado en esta dirección (solo en la versión de Netlify).");
+    if(!r.ok)throw new Error("Mercado Pago no respondió. Probá de nuevo.");
+    return r.json()}).then(function(d){
+    var have={};S.mpFeed.forEach(function(e){if(e.mpid)have[e.mpid]=1});var nn=0;
+    (d.items||[]).forEach(function(it){if(have[it.id])return;S.mpFeed.push({id:"m"+(S.mpN++),ts:Date.parse(it.ts),amount:it.amount,payer:"Operación …"+String(it.id).slice(-4),sid:null,real:true,mpid:it.id});nn++});
+    S.mpFeed=S.mpFeed.slice(-120);var n2=new Date();UI.mplast=hhmm(n2.getTime())+":"+String(n2.getSeconds()).padStart(2,"0");save();renderMP();toast(nn?nn+" transferencia"+(nn===1?"":"s")+" nueva"+(nn===1?"":"s"):"Sin transferencias nuevas")
+  }).catch(function(e){renderMP();toast(e.message||"No se pudo actualizar")});
 }
 function renderPend(){
   var el=$("pend");if(!el)return;
@@ -688,15 +703,16 @@ function renderMP(){
   if(rs){var td=S.sales.filter(function(x){return x.local===UI.local&&dayKey(x.ts)===today});rs.innerHTML='<small>Hoy en '+LOCALES[UI.local].name.replace("Local ","")+'</small><b class="num">'+money(sum(td))+'</b><span>'+td.length+' ventas</span>'}
   var el=$("mpview");if(!el)return;
   var am=arrivedMap(),pl=pendList(),byId={};pl.forEach(function(x){byId[x.id]=x});
-  var feed=S.mpFeed.slice().sort(function(a,b){return b.ts-a.ts}).slice(0,10);
-  var totHoy=S.mpFeed.filter(function(e){return dayKey(e.ts)===today}).reduce(function(a,e){return a+e.amount},0);
+  var fm=S.mpFeed.filter(function(e){return !!e.real===MPREAL()});
+  var feed=fm.slice().sort(function(a,b){return b.ts-a.ts}).slice(0,10);
+  var totHoy=fm.filter(function(e){return dayKey(e.ts)===today}).reduce(function(a,e){return a+e.amount},0);
   var rows=feed.map(function(e){
     var st;
     if(e.sid){var sv=S.sales.filter(function(x){return x.id===e.sid})[0];st='<span class="pill ok">Acreditada'+(sv?' · '+sv.emp+' '+hhmm(sv.ts):'')+'</span>'}
     else{var sale=null;for(var k=0;k<pl.length;k++){if(pl[k].total===e.amount&&am[pl[k].id]===e.id){sale=pl[k];break}}
       st=sale?'<button class="ok" data-a="acrfeed" data-v="'+e.id+'">Acreditar venta de '+sale.emp+' · '+hhmm(sale.ts)+'</button>':'<span class="pill warn">Sin venta cargada</span>'}
     return '<div class="mrow'+(e.sid?"":" nw")+'"><div class="mt"><b>'+hhmm(e.ts)+'</b><small>'+e.payer+'</small></div><b class="num mamt">+'+money(e.amount)+'</b><div class="mst">'+st+'</div></div>'}).join("");
-  el.innerHTML='<div class="mhead"><div><h2>Actividad de Mercado Pago <span class="tag2">Simulado</span></h2><div class="note">Últimas 10 transferencias recibidas. Actualizá como harías en la billetera.</div></div><div class="mact"><button class="cta" data-a="mprefresh">Actualizar</button><small>'+(UI.mplast?'Actualizado '+UI.mplast:'Sin actualizar')+'</small></div></div>'
+  el.innerHTML='<div class="mhead"><div><h2>Actividad de Mercado Pago <span class="tag2">'+(MPREAL()?"Real":"Simulado")+'</span></h2><div class="note">'+(MPREAL()?"Últimas 10 transferencias recibidas en tu cuenta. Tocá Actualizar para traer las nuevas.":"Últimas 10 transferencias recibidas. Actualizá como harías en la billetera.")+'</div></div><div class="mact"><button class="cta" data-a="mprefresh">Actualizar</button><small>'+(UI.mplast?'Actualizado '+UI.mplast:'Sin actualizar')+'</small></div></div>'
    +'<div class="mkp"><div><small>Recibido hoy</small><b class="num">'+money(totHoy)+'</b></div><div><small>Pendientes de acreditar</small><b class="num">'+pl.length+'</b></div></div>'
    +'<div class="mlist">'+(rows||'<div class="empty">Todavía no hay movimientos.</div>')+'</div>';
 }
@@ -888,10 +904,13 @@ function render(){
 document.addEventListener("click",function(e){
   var el=e.target.closest("[data-a]");if(!el)return;
   var a=el.getAttribute("data-a"),v=el.getAttribute("data-v");
+  if(a==="mpmode"){if(v==="real"&&!mpKey()){askKey();return}setPref(a,v);return}
+  if(a==="mpkeyok"){var kv=($("mpkey").value||"").trim();if(!kv){toast("Escribí la clave");return}try{localStorage.setItem("lospinos-mpkey",kv)}catch(e){}closeWeigh();setPref("mpmode","real");return}
   if(a==="theme"||a==="view"){setPref(a,v);return}
   if(a==="logout"){logout();return}
   if(a==="acr"){var sx=S.sales.filter(function(x){return x.id===v})[0];if(!sx)return;linkSale(sx);save();renderTicket();renderChrome();toast("Acreditada · "+money(sx.total));return}
   if(a==="acrfeed"){var fe=S.mpFeed.filter(function(x){return x.id===v})[0];var sa=fe&&pendList().filter(function(x){return x.total===fe.amount})[0];if(!sa){toast("No hay una venta pendiente por ese monto");return}linkSale(sa);save();renderTicket();renderChrome();toast("Acreditada · "+money(sa.total));return}
+  if(a==="mprefresh"&&MPREAL()){mpRefreshReal();return}
   if(a==="mprefresh"){
     var nmz=["M. Gómez","L. Pérez","C. Díaz","A. Ruiz","S. Torres","J. Álvarez","P. Sosa","V. Molina","R. Acosta","N. Vega"],nn=0,now=Date.now(),have={};
     S.mpFeed.forEach(function(e){if(!e.sid)have[e.amount]=(have[e.amount]||0)+1});
@@ -1033,16 +1052,19 @@ var EMBED=(location.hash==="#embed");
 var PREF={theme:"auto",view:"auto"};
 try{PREF.theme=localStorage.getItem("lospinos-theme")||"auto"}catch(e){}
 try{PREF.view=localStorage.getItem("lospinos-view")||"auto"}catch(e){}
+PREF.mpmode="sim";try{PREF.mpmode=localStorage.getItem("lospinos-mpmode")||"sim"}catch(e){}
+function MPREAL(){return PREF.mpmode==="real"}
+function mpKey(){try{return localStorage.getItem("lospinos-mpkey")||""}catch(e){return ""}}
 if(EMBED){PREF.view="auto";document.body.classList.add("embed")}
 function applyTheme(){var r=document.documentElement;if(PREF.theme==="light"||PREF.theme==="dark")r.setAttribute("data-theme",PREF.theme);else r.removeAttribute("data-theme")}
 function setPref(k,v){
   PREF[k]=v;try{localStorage.setItem("lospinos-"+k,v)}catch(e){}
   if(k==="theme"){applyTheme();var f=document.querySelector("#frame iframe");if(f&&f.contentWindow)f.contentWindow.postMessage({lospinos:"theme",v:v},"*")}
-  renderTools();if(k==="view")applyView();
+  renderTools();if(k==="view")applyView();if(k==="mpmode"){UI.mplast="";render()}
 }
 function seg(k,opts){return '<span class="range" role="group" aria-label="'+k+'">'+opts.map(function(o){return '<button data-a="'+k+'" data-v="'+o[0]+'" aria-pressed="'+(PREF[k]===o[0])+'">'+o[1]+'</button>'}).join("")+'</span>'}
 function renderTools(){
-  $("tools").innerHTML='<div class="tl"><span>Tema</span>'+seg("theme",[["light","Claro"],["dark","Oscuro"],["auto","Automático"]])+'</div><div class="tl"><span>Vista</span>'+seg("view",[["auto","Automática"],["mitad","Mitad de pantalla"],["tablet","Tablet"],["celular","Celular"]])+'</div>';
+  $("tools").innerHTML='<div class="tl"><span>Tema</span>'+seg("theme",[["light","Claro"],["dark","Oscuro"],["auto","Automático"]])+'</div><div class="tl"><span>Vista</span>'+seg("view",[["auto","Automática"],["mitad","Mitad de pantalla"],["tablet","Tablet"],["celular","Celular"]])+'</div>'+(CUR&&CUR.role==="admin"?'<div class="tl tlmp"><span>Mercado Pago</span>'+seg("mpmode",[["sim","Simulado"],["real","Real"]])+'</div>':"");
 }
 function applyView(){
   var fr=$("frame"),on=PREF.view!=="auto"&&!EMBED;
