@@ -372,7 +372,7 @@ th.r,td.r{text-align:right;padding-right:0}
 .locked #login{flex:1;align-items:center}
 }
 @media (min-width:601px) and (max-width:1099px) and (min-height:520px){
- .pos{grid-template-rows:auto minmax(0,1fr);gap:10px}
+ .pos{gap:10px}
  .rail{grid-column:1/-1;flex-direction:row;align-items:center;gap:8px}
  .rail .search{width:150px;flex:none}
  .rail .cats{flex-direction:row;overflow-x:auto;overflow-y:hidden;flex:1;padding-bottom:2px}
@@ -396,6 +396,38 @@ th.r,td.r{text-align:right;padding-right:0}
  .mrow{grid-template-columns:90px 1fr auto}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* layout v3: ticket izquierda, catalogo centro, transferencias derecha */
+.tcol{display:flex;flex-direction:column;gap:10px;min-width:0}
+.catbar{display:flex;gap:8px;align-items:center;min-width:0}
+.catbar .search{margin:0;width:150px;flex:none}
+.catbar .cats{margin:0;padding:0 0 2px;flex:1;min-width:0}
+@media (max-width:900px){.catbar{order:1}.form{order:2}.catalog{order:3}.tcol{order:4}.side{order:5}.catbar .search{width:120px}}
+@media (min-width:601px) and (min-height:520px){
+ .pos{grid-template-columns:290px minmax(0,1fr) 300px}
+ .tcol{min-height:0;overflow:hidden}
+ .tcol>.ticket{flex:1 1 0;min-height:0;gap:10px;padding:14px}
+ .tcol>.ticket .lines{flex:1 1 auto;min-height:44px;overflow-y:auto}
+ .tcol>.ticket .total{font-size:1.7rem}
+ .tcol>.ticket .line{padding:6px 0}
+ .tcol>.ticket .lact button{padding:2px 8px;font-size:.8rem}
+ .tcol .rstat{flex:none}
+ .tcol .pay{grid-template-columns:auto auto auto auto;justify-content:space-between;gap:3px}
+ .tcol .pay button{padding:10px 4px;font-size:.78rem;min-width:0;overflow:visible}
+ .tcol>.ticket{padding:12px}
+ .livehead .mact{flex-direction:column;align-items:flex-end;gap:2px}
+ .catbar .cats{flex-direction:row;overflow-x:auto;overflow-y:hidden;gap:6px}
+ .catbar .cats button{white-space:nowrap;border-radius:12px;padding:11px 8px;font-size:.86rem}
+ .catbar .cats .tc{display:none}
+ .catbar .search{width:96px;padding-inline:10px}
+ .side>.pend{flex:1 1 auto;min-height:0}
+}
+@media (min-width:601px) and (max-width:1099px) and (min-height:520px){
+ .pos{grid-template-columns:240px minmax(0,1fr) 270px}
+ .catbar .search{width:110px}
+ .catbar .cats button{padding:9px 10px;font-size:.9rem}
+ .tcol .rstat{display:none}
+}
 </style>
 
 </head><body><div class="wrap">
@@ -465,7 +497,7 @@ function readPhoto(file,cb){
 var TABS=[["caja","Caja"],["cierre","Cierre ciego"],["dueno","Dueño"],["stock","Stock"],["fact","Facturación"],["precios","Precios"]];
 
 var S=null,mem=null;
-var UI={tab:"caja",local:"centro",emp:"Marta",cat:"Más vendidos",q:"",cart:[],pay:"ef",fc:false,paid:null,sel:null,edit:null,range:"hoy",confirmReset:false,done:null,stq:"",stcat:"Todas"};
+var UI={tab:"caja",local:"centro",emp:"Marta",cat:"Panificación",q:"",cart:[],pay:"ef",fc:false,paid:null,sel:null,edit:null,range:"hoy",confirmReset:false,done:null,stq:"",stcat:"Todas"};
 
 function money(n){return Number(n).toLocaleString("es-AR",{style:"currency",currency:"ARS",maximumFractionDigits:0})}
 function signed(n){return (n>0?"+":n<0?"−":"")+money(Math.abs(n))}
@@ -555,17 +587,17 @@ function renderChrome(){
 
 /* ---------- Caja (venta) ---------- */
 function viewCaja(){
-  var cats=["Más vendidos","Todos"].concat(CATS).map(function(c){var n=CATS.indexOf(c)>-1?PRODUCTS.filter(function(p){return p.cat===c}).length:0;return '<button data-a="cat" data-v="'+c+'" aria-pressed="'+(c===UI.cat)+'">'+c+(n?' <span class="tc">'+n+'</span>':'')+'</button>'}).join("");
+  var cats=CATS.map(function(c){var n=CATS.indexOf(c)>-1?PRODUCTS.filter(function(p){return p.cat===c}).length:0;return '<button data-a="cat" data-v="'+c+'" aria-pressed="'+(c===UI.cat)+'">'+c+(n?' <span class="tc">'+n+'</span>':'')+'</button>'}).join("");
   var opts=PRODUCTS.map(function(p){return '<option value="'+p.name+'" label="#'+p.code+' · '+(p.unit==="kg"?"por kg":"c/u")+'"></option>'}).join("");
-  return '<div class="pos'+(UI.cview==="mp"?" mpmode":"")+'"><aside class="rail" aria-label="Tipos de producto"><input class="search" id="q" type="search" placeholder="Buscar…" autocomplete="off" value="'+UI.q+'"><div class="cats">'+cats+'</div><div class="rstat" id="rstat"></div></aside>'
-   +'<div class="main-col"><div class="cview" role="tablist"><button data-a="cview" data-v="prod" aria-pressed="'+(UI.cview!=="mp")+'">Productos</button><button data-a="cview" data-v="mp" aria-pressed="'+(UI.cview==="mp")+'">Acreditaciones <span class="cnt2" id="mpbadge" hidden></span></button></div><section class="card form" aria-label="Carga de producto"><div class="head"><h2 id="ftitle">Cargar producto</h2></div>'
+  return '<div class="pos"><aside class="tcol" aria-label="Ticket"><aside class="ticket" id="ticket"></aside><div class="rstat" id="rstat"></div></aside>'
+   +'<div class="main-col"><div class="catbar" aria-label="Tipos de producto"><input class="search" id="q" type="search" placeholder="Buscar…" autocomplete="off" value="'+UI.q+'"><div class="cats">'+cats+'</div></div><section class="card form" aria-label="Carga de producto"><div class="head"><h2 id="ftitle">Cargar producto</h2></div>'
    +'<div class="frow"><div class="fld grow"><label for="f-prod">Producto</label><div class="pwrap"><span class="thumb" id="f-thumb"></span><input id="f-prod" type="text" list="plist" placeholder="Tocá un producto o escribí nombre / código" autocomplete="off"></div><datalist id="plist">'+opts+'</datalist></div>'
    +'<div class="fld"><label for="f-qty" id="f-qlbl">Peso o cantidad</label><input id="f-qty" type="text" inputmode="decimal" placeholder="0,350 o 350 g" autocomplete="off"></div>'
    +'<div class="fld"><label>Precio</label><output id="f-price" class="ro num">—</output></div><div class="fld"><label>Subtotal</label><output id="f-sub" class="ro num">—</output></div></div>'
    +'<div class="dockrow"><div class="chips" id="f-quick"><span class="hint">Tocá un producto y después el peso: se agrega solo.</span></div>'
    +'<div class="factions"><button class="cta" id="f-ok" data-a="fadd">Agregar</button><button class="ghost" id="f-cancel" data-a="fcancel" hidden>Cancelar edición</button><button class="ghost" data-a="libre">+ Otro</button></div></div></section>'
-   +'<section class="catalog" aria-label="Catálogo"><div class="grid" id="grid"></div></section><section class="card mpview" id="mpview" aria-label="Visor de acreditaciones"></section></div>'
-   +'<div class="side"><aside class="ticket" id="ticket" aria-label="Ticket"></aside><div class="pend" id="pend"></div></div></div><div class="mobbar" id="mobbar"></div>';
+   +'<section class="catalog" aria-label="Catálogo"><div class="grid" id="grid"></div></section></div>'
+   +'<div class="side"><div class="pend" id="pend"></div></div></div><div class="mobbar" id="mobbar"></div>';
 }
 function topList(){
   var from=startOfDay(6),m={};
@@ -1074,7 +1106,7 @@ try{var su=sessionStorage.getItem("lospinos-sess");if(su){var uu=USERS.filter(fu
 var EMBED=(location.hash==="#embed");
 var PREF={theme:"auto",view:"auto"};
 try{PREF.theme=localStorage.getItem("lospinos-theme")||"auto"}catch(e){}
-try{PREF.view=localStorage.getItem("lospinos-view")||"auto"}catch(e){}
+PREF.view="auto";
 PREF.mpmode="sim";try{PREF.mpmode=localStorage.getItem("lospinos-mpmode")||"sim"}catch(e){}
 function MPREAL(){return PREF.mpmode==="real"}
 function mpKey(){try{return localStorage.getItem("lospinos-mpkey")||""}catch(e){return ""}}
@@ -1087,7 +1119,7 @@ function setPref(k,v){
 }
 function seg(k,opts){return '<span class="range" role="group" aria-label="'+k+'">'+opts.map(function(o){return '<button data-a="'+k+'" data-v="'+o[0]+'" aria-pressed="'+(PREF[k]===o[0])+'">'+o[1]+'</button>'}).join("")+'</span>'}
 function renderTools(){
-  $("tools").innerHTML='<div class="tl"><span>Tema</span>'+seg("theme",[["light","Claro"],["dark","Oscuro"],["auto","Automático"]])+'</div><div class="tl"><span>Vista</span>'+seg("view",[["auto","Automática"],["mitad","Mitad de pantalla"],["tablet","Tablet"],["celular","Celular"]])+'</div>';
+  $("tools").innerHTML='<div class="tl"><span>Tema</span>'+seg("theme",[["light","Claro"],["dark","Oscuro"],["auto","Automático"]])+'</div>';
 }
 function applyView(){
   var fr=$("frame"),on=PREF.view!=="auto"&&!EMBED;
