@@ -569,7 +569,7 @@ function readPhoto(file,cb){
   fr.readAsDataURL(file);
 }
 
-var TABS=[["hoy","Resumen"],["caja","Caja"],["cierre","Cierre ciego"],["dueno","Dueño"],["stock","Stock"],["fact","Facturación"],["precios","Precios"]];
+var TABS=[["hoy","Resumen"],["caja","Caja"],["cierre","Cierre ciego"],["dueno","Dueño"],["stock","Stock"],["fact","Facturación"],["precios","Precios"],["usuarios","Usuarios"]];
 
 var S=null,mem=null;
 var UI={tab:"caja",local:"centro",emp:"Marta",cat:"Panificación",q:"",cart:[],pay:"ef",fc:false,paid:null,sel:null,edit:null,range:"hoy",confirmReset:false,done:null,stq:"",stcat:"Todas"};
@@ -637,6 +637,9 @@ function load(){
   if(!S.products)S.products=DEFAULT_PRODUCTS.map(function(p){return Object.assign({},p)});
   S.sales.forEach(function(x){if(x.pay==="tr"&&x.acr===undefined)x.acr={ts:x.ts+60000,by:x.emp,auto:true}});
   if(!S.z1){S.sales=[];S.closings=[];S.mpFeed=[];S.mpN=0;S.n=0;if(S.fcfg)S.fcfg.last=0;S.z1=1;save()}
+  if(!S.users)S.users=USERS.map(function(u){return {u:u.u,pw:u.pw,name:u.name,role:u.role,local:u.local||"",act:true}});
+  if(!S.perm)S.perm={empleado:ALLOW.empleado.slice(),supervisor:ALLOW.supervisor.slice()};
+  syncEmps();
   if(!S.priceLog)S.priceLog=[];
   if(S.fact&&!S.fact._v2){S.fact.tr=false;S.fact._v2=1}
   if(!S.mpFeed){var nm=["M. Gómez","L. Pérez","C. Díaz","A. Ruiz","S. Torres","J. Álvarez","P. Sosa","V. Molina"];S.mpFeed=S.sales.filter(function(x){return x.pay==="tr"&&x.acr}).slice(-60).map(function(x,i){return {id:"m"+i,ts:x.ts+60000,amount:x.total,payer:nm[i%nm.length],sid:x.id}});S.mpN=S.mpFeed.length}
@@ -656,7 +659,7 @@ function renderChrome(){
   else $("who").innerHTML='<label>Local<select id="sel-local">'+lo+'</select></label><label>Atiende<select id="sel-emp">'+em+'</select></label>'+ub;
   renderTools();
   var low=lowStock().length,pf=pendFact().length;
-  $("tabs").innerHTML=TABS.filter(function(t){return CUR&&ALLOW[CUR.role].indexOf(t[0])>-1}).map(function(t){
+  $("tabs").innerHTML=TABS.filter(function(t){return CUR&&allow(CUR.role).indexOf(t[0])>-1}).map(function(t){
     var c=t[0]==="stock"&&low?'<span class="cnt">'+low+'</span>':t[0]==="fact"&&pf?'<span class="cnt" style="background:var(--graf2)">'+pf+'</span>':"";
     return '<button role="tab" data-a="tab" data-v="'+t[0]+'" aria-selected="'+(UI.tab===t[0])+'">'+t[1]+c+'</button>';
   }).join("");
@@ -1123,6 +1126,39 @@ function openFactura(id){
    +'<button class="ghost" data-a="closew">Cerrar</button>');
   document.querySelector(".sheet").classList.add("wide");
 }
+
+/* ---------- Usuarios y permisos (admin) ---------- */
+var MODS=[["hoy","Resumen del dueño"],["caja","Caja"],["cierre","Cierre ciego"],["dueno","Panel Dueño"],["stock","Stock"],["fact","Facturación"],["precios","Precios"],["usuarios","Usuarios y permisos"]];
+function actAdmins(){return UL().filter(function(u){return u.act&&u.role==="admin"}).length}
+function viewUsers(){
+  var rows=S.users.map(function(u){var me=CUR&&CUR.u===u.u;
+    return '<tr'+(u.act?'':' style="opacity:.55"')+'><td><b>'+ue(u.name)+'</b>'+(me?' <small>(vos)</small>':'')+'</td><td>'+ue(u.u)+'</td><td><span class="role r-'+u.role+'">'+ROLES[u.role]+'</span></td><td>'+(u.role==="empleado"&&u.local&&LOCALES[u.local]?LOCALES[u.local].name.replace("Local ",""):"—")+'</td><td>'+(u.act?"Activo":"Inactivo")+'</td><td class="r" style="white-space:nowrap"><button class="ghost" data-a="useredit" data-v="'+ue(u.u)+'">Editar</button>'+(me?'':' <button class="ghost" data-a="usertoggle" data-v="'+ue(u.u)+'">'+(u.act?"Desactivar":"Activar")+'</button>')+'</td></tr>'}).join("");
+  var mrows=MODS.map(function(md){
+    var cells=["empleado","supervisor","admin"].map(function(r){
+      var locked=r==="admin"||md[0]==="usuarios";
+      var on=r==="admin"||(md[0]!=="usuarios"&&S.perm[r].indexOf(md[0])>-1);
+      return '<td style="text-align:center"><input type="checkbox" data-a="permchk" data-v="'+r+'|'+md[0]+'"'+(on?' checked':'')+(locked?' disabled':'')+' aria-label="'+ROLES[r]+': '+md[1]+'"></td>'}).join("");
+    return '<tr><td>'+md[1]+'</td>'+cells+'</tr>'}).join("");
+  return '<div class="head"><div><h2>Usuarios y permisos</h2><div class="note">Quién puede operar el sistema y qué ve cada nivel.</div></div><button class="cta" data-a="usernew" style="width:auto;padding:10px 18px">Nuevo usuario</button></div>'
+   +'<section class="card"><h3>Personas con acceso</h3><div class="tw"><table style="margin-top:8px"><thead><tr><th>Nombre</th><th>Usuario</th><th>Nivel</th><th>Local</th><th>Estado</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div></section>'
+   +'<section class="card" style="margin-top:14px"><h3>Qué puede ver cada nivel</h3><div class="note">Tildá los módulos que se habilitan para cada nivel. Admin siempre tiene todo. Las acciones delicadas (editar productos, configurar facturación, reiniciar la demo) quedan reservadas a Admin.</div><div class="tw"><table style="margin-top:8px"><thead><tr><th>Módulo</th><th style="text-align:center">Empleado</th><th style="text-align:center">Supervisor</th><th style="text-align:center">Admin</th></tr></thead><tbody>'+mrows+'</tbody></table></div></section>'
+   +'<p class="note" style="margin-top:12px">Demo: las contraseñas se guardan en este navegador. En el sistema real se guardan cifradas en el servidor.</p>';
+}
+function openUser(un,confirmDel){
+  var cu=un?S.users.filter(function(x){return x.u===un})[0]:null,me=cu&&CUR&&cu.u===CUR.u;
+  var ro=["empleado","supervisor","admin"].map(function(r){return '<option value="'+r+'"'+((cu?cu.role:"empleado")===r?' selected':'')+'>'+ROLES[r]+'</option>'}).join("");
+  var lo=Object.keys(LOCALES).map(function(k){return '<option value="'+k+'"'+(cu&&cu.local===k?' selected':'')+'>'+LOCALES[k].name+'</option>'}).join("");
+  sheet('<div><h3>'+(cu?'Editar usuario':'Nuevo usuario')+'</h3></div>'
+   +'<div class="fld"><label for="us-n">Nombre</label><input id="us-n" type="text" autocomplete="off" value="'+(cu?ue(cu.name):"")+'"></div>'
+   +'<div class="fld"><label for="us-u">Usuario para ingresar</label><input id="us-u" type="text" autocapitalize="none" spellcheck="false" autocomplete="off" value="'+(cu?ue(cu.u):"")+'"></div>'
+   +'<div class="fld"><label for="us-p">Contraseña</label><input id="us-p" type="text" autocomplete="off" placeholder="'+(cu?'Dejar vacía para no cambiarla':'Mínimo 4 caracteres')+'"></div>'
+   +'<div class="fld"><label for="us-r">Nivel</label><select id="us-r"'+(me?' disabled':'')+'>'+ro+'</select>'+(me?'<small>No podés cambiar tu propio nivel.</small>':'')+'</div>'
+   +'<div class="fld"><label for="us-l">Local (solo para empleados)</label><select id="us-l">'+lo+'</select></div>'
+   +'<button class="cta" data-a="usersave" data-v="'+(cu?ue(cu.u):"")+'">Guardar</button>'
+   +(cu&&!me?'<button class="ghost" data-a="userdel" data-v="'+ue(cu.u)+'">'+(confirmDel?'Confirmar: eliminar definitivamente':'Eliminar usuario')+'</button>':'')
+   +'<button class="ghost" data-a="closew">Cancelar</button>');
+  setTimeout(function(){var i=$("us-n");if(i)i.focus()},30)
+}
 function viewFact(){
   var pend=pendFactV().sort(function(a,b){return a.ts-b.ts});
   var adm=can("admin"),c=fcfg();
@@ -1149,10 +1185,10 @@ function viewFact(){
 function render(){
   if(!CUR){showLogin();return}
   document.body.classList.remove("locked");$("login").hidden=true;
-  if(ALLOW[CUR.role].indexOf(UI.tab)<0)UI.tab="caja";
+  if(allow(CUR.role).indexOf(UI.tab)<0)UI.tab=allow(CUR.role)[0];
   renderChrome();
   var app=$("app");
-  app.innerHTML=UI.tab==="hoy"?viewHoy():UI.tab==="caja"?viewCaja():UI.tab==="cierre"?viewCierre():UI.tab==="dueno"?viewDueno():UI.tab==="stock"?viewStock():UI.tab==="precios"?viewPrecios():viewFact();
+  app.innerHTML=UI.tab==="hoy"?viewHoy():UI.tab==="caja"?viewCaja():UI.tab==="cierre"?viewCierre():UI.tab==="dueno"?viewDueno():UI.tab==="stock"?viewStock():UI.tab==="precios"?viewPrecios():UI.tab==="usuarios"?viewUsers():viewFact();
   if(UI.tab==="caja"){UI.sel=null;UI.edit=null;renderGrid();renderTicket();syncForm()}
   if(UI.tab==="stock")renderStock();
   if(UI.tab==="precios")renderPrecios();
@@ -1179,8 +1215,34 @@ document.addEventListener("click",function(e){
   if(a==="pclear"){UI.pnew={};renderPrecios();return}
   if(a==="psave"){var ch=PRICE_CHANGES();if(!ch.length)return;ch.forEach(function(c){S.priceLog.unshift({ts:Date.now(),by:CUR?CUR.name:"",pid:c.p.id,name:c.p.name,cat:c.p.cat,old:c.p.price,nw:c.n});c.p.price=c.n});S.priceLog=S.priceLog.slice(0,80);UI.pnew={};save();render();toast(ch.length+" precio"+(ch.length===1?"":"s")+" actualizado"+(ch.length===1?"":"s"));return}
   if(a==="mprep"){UI.mprep=mpReport();render();return}
-  if(a==="fill"){var u=USERS.filter(function(x){return x.u===v})[0];$("lg-u").value=u.u;$("lg-p").value=u.pw;$("lg-p").focus();return}
-  if(a==="tab"&&CUR&&ALLOW[CUR.role].indexOf(v)<0)return;
+  if(a.indexOf("user")===0&&a!=="user"){
+    if(!can("admin"))return;
+    if(a==="usernew"){UI.udel=null;openUser(null);return}
+    if(a==="useredit"){UI.udel=null;openUser(v);return}
+    var tu=S.users.filter(function(x){return x.u===v})[0];
+    if(a==="usertoggle"){if(!tu||tu===CUR)return;if(tu.act&&tu.role==="admin"&&actAdmins()<=1){toast("Tiene que quedar al menos un Admin activo");return}tu.act=!tu.act;save();syncEmps();render();toast(tu.name+(tu.act?" activado":" desactivado"));return}
+    if(a==="userdel"){if(!tu||tu===CUR)return;if(!UI.udel||UI.udel!==v){UI.udel=v;openUser(v,true);return}
+      if(tu.act&&tu.role==="admin"&&actAdmins()<=1){toast("Tiene que quedar al menos un Admin activo");return}
+      S.users=S.users.filter(function(x){return x!==tu});UI.udel=null;save();syncEmps();closeWeigh();render();toast("Usuario eliminado");return}
+    if(a==="usersave"){
+      UI.udel=null;
+      var cu=v?S.users.filter(function(x){return x.u===v})[0]:null;
+      var n=$("us-n").value.trim(),un=$("us-u").value.trim().toLowerCase(),pw=$("us-p").value,rl=$("us-r").value,lc=$("us-l").value;
+      if(cu&&cu===CUR)rl=cu.role;
+      if(!n||!un){toast("Completá nombre y usuario");return}
+      if(!/^[a-z0-9._-]{3,20}$/.test(un)){toast("Usuario: de 3 a 20 letras o números, sin espacios");return}
+      if(S.users.some(function(x){return x.u===un&&x!==cu})){toast("Ese usuario ya existe");return}
+      if((!cu||pw)&&pw.length<4){toast("La contraseña debe tener al menos 4 caracteres");return}
+      if(rl==="empleado"&&S.users.some(function(x){return x!==cu&&x.role==="empleado"&&x.local===lc&&x.name.toLowerCase()===n.toLowerCase()})){toast("Ya hay un empleado con ese nombre en ese local");return}
+      if(cu&&cu.act&&cu.role==="admin"&&rl!=="admin"&&actAdmins()<=1){toast("Tiene que quedar al menos un Admin activo");return}
+      if(!cu){cu={act:true};S.users.push(cu)}
+      var wasMe=cu===CUR;
+      cu.name=n;cu.u=un;if(pw)cu.pw=pw;cu.role=rl;cu.local=rl==="empleado"?lc:"";
+      if(wasMe){try{sessionStorage.setItem("lospinos-sess",cu.u)}catch(er){}}
+      save();syncEmps();closeWeigh();render();toast("Usuario guardado");return}
+  }
+  if(a==="fill"){var u=UL().filter(function(x){return x.u===v})[0];$("lg-u").value=u.u;$("lg-p").value=u.pw;$("lg-p").focus();return}
+  if(a==="tab"&&CUR&&allow(CUR.role).indexOf(v)<0)return;
   if((a==="newproduct"||a==="reset")&&!can("admin"))return;
   if(a==="closew"){if(e.target===el||el.tagName==="BUTTON")closeWeigh();return}
   if(a==="tab"){UI.tab=v;UI.confirmReset=false;closeWeigh();render();window.scrollTo(0,0);return}
@@ -1264,7 +1326,7 @@ document.addEventListener("click",function(e){
   if(a==="reset"){
     if(!UI.confirmReset){UI.confirmReset=true;render();return}
     try{localStorage.removeItem(LS)}catch(x){}
-    S=seedData();mem=S;setProducts();save();UI.confirmReset=false;UI.cart=[];UI.done=null;render();toast("Datos de ejemplo reiniciados");return}
+    var ou=S.users,op=S.perm;S=seedData();S.users=ou;S.perm=op;mem=S;setProducts();save();syncEmps();UI.confirmReset=false;UI.cart=[];UI.done=null;render();toast("Datos de ejemplo reiniciados");return}
 });
 document.addEventListener("change",function(e){
   var t=e.target;
@@ -1273,6 +1335,7 @@ document.addEventListener("change",function(e){
   if(t.id==="sel-emp"){UI.emp=t.value;UI.done=null;render();return}
   if(t.id==="fc"){UI.fc=t.checked;return}
   if(t.id==="stcat"){UI.stcat=t.value;renderStock();return}
+  if(t.getAttribute("data-a")==="permchk"&&can("admin")){var pp=t.getAttribute("data-v").split("|"),pr=pp[0],pm=pp[1];if(pr==="admin"||pm==="usuarios"||!S.perm[pr])return;var ix=S.perm[pr].indexOf(pm);if(t.checked&&ix<0)S.perm[pr].push(pm);else if(!t.checked&&ix>-1){if(S.perm[pr].length<=1){t.checked=true;toast("Cada nivel necesita al menos un módulo");return}S.perm[pr].splice(ix,1)}save();toast("Permisos actualizados");return}
   if(t.getAttribute("data-a")==="factrule"&&can("admin")){S.fact[t.getAttribute("data-v")]=t.checked;save();render()}
 });
 document.addEventListener("input",function(e){
@@ -1295,7 +1358,11 @@ document.addEventListener("keydown",function(e){
 
 /* acceso por credenciales (demo: usuarios de ejemplo, sin servidor) */
 var ROLES={empleado:"Empleado",supervisor:"Supervisor",admin:"Admin"};
-var ALLOW={empleado:["caja","cierre","fact"],supervisor:["caja","cierre","stock","fact"],admin:["hoy","caja","cierre","dueno","stock","fact","precios"]};
+var ALLOW={empleado:["caja","cierre","fact"],supervisor:["caja","cierre","stock","fact"],admin:["hoy","caja","cierre","dueno","stock","fact","precios","usuarios"]};
+function allow(r){var p=S&&S.perm&&S.perm[r];return r==="admin"?ALLOW.admin:(p&&p.length?p:ALLOW[r])}
+function UL(){return (S&&S.users)||USERS}
+function ue(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]})}
+function syncEmps(){if(!S||!S.users)return;Object.keys(LOCALES).forEach(function(lk){var n=S.users.filter(function(u){return u.act&&u.role==="empleado"&&u.local===lk}).map(function(u){return u.name});LOCALES[lk].emps=n.length?n:["(sin empleados)"]})}
 var USERS=[
  {u:"marta",pw:"marta123",name:"Marta",role:"empleado",local:"centro"},
  {u:"lucas",pw:"lucas123",name:"Lucas",role:"empleado",local:"centro"},
@@ -1309,19 +1376,18 @@ function startSession(u){CUR=u;if(u.role==="empleado"){UI.local=u.local;UI.emp=u
 function logout(){CUR=null;LGERR="";try{sessionStorage.removeItem("lospinos-sess")}catch(e){}render()}
 function showLogin(){
   document.body.classList.add("locked");var L=$("login");L.hidden=false;
-  var rows=USERS.map(function(u){return '<button type="button" data-a="fill" data-v="'+u.u+'" class="acc"><span class="role r-'+u.role+'">'+ROLES[u.role]+'</span><b>'+u.name+(u.local?' · '+LOCALES[u.local].name.replace("Local ",""):"")+'</b><small>'+u.u+' / '+u.pw+'</small></button>'}).join("");
+  var rows=UL().filter(function(u){return u.act}).map(function(u){return '<button type="button" data-a="fill" data-v="'+u.u+'" class="acc"><span class="role r-'+u.role+'">'+ROLES[u.role]+'</span><b>'+u.name+(u.local?' · '+LOCALES[u.local].name.replace("Local ",""):"")+'</b><small>'+u.u+' / '+u.pw+'</small></button>'}).join("");
   L.innerHTML='<form class="card lg" id="lgform" autocomplete="off"><h2>Ingresá al sistema</h2><p class="note">Cada persona entra con su usuario y ve solo lo que le corresponde.</p><label>Usuario<input id="lg-u" autocapitalize="none" spellcheck="false" required></label><label>Contraseña<input id="lg-p" type="password" required></label><div class="lgerr" role="alert">'+LGERR+'</div><button class="cta" type="submit">Ingresar</button><div class="perm"><div><span class="role r-empleado">Empleado</span> Caja y cierre ciego de su local.</div><div><span class="role r-supervisor">Supervisor</span> Además: stock, transferencias y facturación.</div><div><span class="role r-admin">Admin</span> Todo: panel del dueño, productos y precios.</div></div><details class="demo"><summary>Usuarios de ejemplo (solo para la demo)</summary><div class="accs">'+rows+'</div></details></form>';
   renderTools();
 }
 document.addEventListener("submit",function(e){
   if(e.target.id!=="lgform")return;e.preventDefault();
   var un=$("lg-u").value.trim().toLowerCase(),pw=$("lg-p").value;
-  var u=USERS.filter(function(x){return x.u===un&&x.pw===pw})[0];
+  var u=UL().filter(function(x){return x.act&&x.u===un&&x.pw===pw})[0];
   if(!u){LGERR="Usuario o contraseña incorrectos.";showLogin();$("lg-u").value=un;return}
   LGERR="";try{sessionStorage.setItem("lospinos-sess",u.u)}catch(er){}
   startSession(u);render();window.scrollTo(0,0);
 });
-try{var su=sessionStorage.getItem("lospinos-sess");if(su){var uu=USERS.filter(function(x){return x.u===su})[0];if(uu)startSession(uu)}}catch(e){}
 /* tema y vista */
 var EMBED=(location.hash==="#embed");
 var PREF={theme:"auto",view:"auto"};
@@ -1353,6 +1419,7 @@ window.addEventListener("message",function(e){if(e.source===window.parent&&e.dat
 applyTheme();renderTools();applyView();
 
 load();
+try{var su=sessionStorage.getItem("lospinos-sess");if(su){var uu=UL().filter(function(x){return x.act&&x.u===su})[0];if(uu)startSession(uu)}}catch(e){}
 var h=(location.hash||"").replace("#","");if(["caja","cierre","dueno","stock","fact","precios"].indexOf(h)>-1)UI.tab=h;
 render();
 </script>
