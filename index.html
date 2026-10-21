@@ -696,7 +696,7 @@ function renderPend(){
   var l=pendList().reverse(),am=arrivedMap();
   var rows=l.map(function(x){var ar=!!am[x.id];return '<div class="prow'+(ar?" arrived":"")+'"><div><b class="num">'+money(x.total)+'</b><small>'+hhmm(x.ts)+' · '+x.emp+(ar?' · <em>Ya llegó a Mercado Pago</em>':'')+'</small></div><button class="ok" data-a="acr" data-v="'+x.id+'">Acreditada</button></div>'}).join("");
   el.className="pend"+(l.length?" has":"");
-  var mpsw=(CUR&&CUR.role==="admin")?'<div class="mpsw"><span>Mercado Pago</span>'+seg("mpmode",[["sim","Simulado"],["real","Real"]])+'</div>':(MPREAL()?'<div class="mpsw"><span>Mercado Pago</span><b>Conectado en vivo</b></div>':'');
+  var mpsw='<div class="mpsw"><span>Mercado Pago</span>'+seg("mpmode",[["sim","Simulado"],["real","Real"]])+'</div>';
   el.innerHTML=mpsw+'<h3>Esperando acreditación <span class="cnt2">'+l.length+'</span></h3>'+(rows||'<div class="empty">Sin transferencias pendientes.</div>');
   var nb=Object.keys(am).length,bd=$("mpbadge");if(bd){bd.hidden=!nb;bd.textContent=nb}
 }
