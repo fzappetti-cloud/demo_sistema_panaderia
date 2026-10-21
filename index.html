@@ -1,5 +1,5 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Los Pinos · Sistema de ventas (demo)</title>
-<meta name="claude:viewport-fit-sides" content="cover">
+
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Source+Sans+3:wght@400;500;600;700&display=swap">
 <style>
 /* Concepto: el cartel de la confitería. Banda grafito con puntos blancos, rosa de marca como fondo y acento; el rosa oscuro se reserva para acciones y texto. */
@@ -504,7 +504,8 @@ th.r,td.r{text-align:right;padding-right:0}
 }
 </style>
 
-</head><body><div class="wrap">
+</head><body>
+<div class="wrap">
     <header class="sign">
     <div class="band"><div class="band-in">
       <img class="roundel" src="logo.png" alt="Panadería Los Pinos Confitería">
@@ -628,13 +629,14 @@ function seedData(){
       }
     });
   }
-  return {products:DEFAULT_PRODUCTS.map(function(p){return Object.assign({},p)}),sales:sales,closings:closings,stock:stock,fact:{ef:false,de:true,tr:false,qr:true,_v2:1},n:n0};
+  return {products:DEFAULT_PRODUCTS.map(function(p){return Object.assign({},p)}),sales:[],closings:[],mpFeed:[],mpN:0,stock:stock,fact:{ef:false,de:true,tr:false,qr:true,_v2:1},n:0,z1:1};
 }
 function load(){
   try{var raw=localStorage.getItem(LS);if(raw)S=JSON.parse(raw)}catch(e){}
   if(!S||!S.sales||!S.stock){S=mem||seedData()}
   if(!S.products)S.products=DEFAULT_PRODUCTS.map(function(p){return Object.assign({},p)});
   S.sales.forEach(function(x){if(x.pay==="tr"&&x.acr===undefined)x.acr={ts:x.ts+60000,by:x.emp,auto:true}});
+  if(!S.z1){S.sales=[];S.closings=[];S.mpFeed=[];S.mpN=0;S.n=0;if(S.fcfg)S.fcfg.last=0;S.z1=1;save()}
   if(!S.priceLog)S.priceLog=[];
   if(S.fact&&!S.fact._v2){S.fact.tr=false;S.fact._v2=1}
   if(!S.mpFeed){var nm=["M. Gómez","L. Pérez","C. Díaz","A. Ruiz","S. Torres","J. Álvarez","P. Sosa","V. Molina"];S.mpFeed=S.sales.filter(function(x){return x.pay==="tr"&&x.acr}).slice(-60).map(function(x,i){return {id:"m"+i,ts:x.ts+60000,amount:x.total,payer:nm[i%nm.length],sid:x.id}});S.mpN=S.mpFeed.length}
@@ -987,7 +989,7 @@ function viewDueno(){
    +'<div class="cols"><section class="card"><h3>Por empleado</h3><div class="tw"><table style="margin-top:8px"><thead><tr><th>Empleado</th><th class="r">Tickets</th><th class="r">Ventas</th></tr></thead><tbody>'+(empRows||'<tr><td colspan="3" class="empty">Sin ventas en el período.</td></tr>')+'</tbody></table></div></section>'
    +'<section class="card"><h3>Arqueos de caja</h3><div class="tw"><table style="margin-top:8px"><thead><tr><th>Día</th><th>Turno</th><th class="r">Resultado</th><th></th></tr></thead><tbody>'+arq+'</tbody></table></div></section></div>'
    +mpBlock()
-   +'<div class="foot"><span>Los datos de esta demo son de ejemplo y quedan solo en este navegador.</span>'+(can("admin")?'<button class="ghost" data-a="reset">'+(UI.confirmReset?"Confirmar: borrar y reiniciar":"Reiniciar datos de ejemplo")+'</button>':"")+'</div>';
+   +'<div class="foot"><span>Esta demo empieza sin ventas y guarda los datos solo en este navegador.</span>'+(can("admin")?'<button class="ghost" data-a="reset">'+(UI.confirmReset?"Confirmar: borrar y reiniciar":"Reiniciar demo (borra las ventas)")+'</button>':"")+'</div>';
 }
 
 /* ---------- Stock ---------- */
@@ -1354,4 +1356,5 @@ load();
 var h=(location.hash||"").replace("#","");if(["caja","cierre","dueno","stock","fact","precios"].indexOf(h)>-1)UI.tab=h;
 render();
 </script>
+
 </body></html>
