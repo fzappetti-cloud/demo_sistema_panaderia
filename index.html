@@ -291,6 +291,22 @@ th.r,td.r{text-align:right;padding-right:0}
 .ok2{color:var(--ok);font-style:normal;font-weight:700}
 .oh-links{display:flex;gap:8px;flex-wrap:wrap}
 .oh-links button{flex:1 1 auto}
+.rsbtn{margin-top:8px;width:100%;border:1px solid #ffffff55;background:transparent;color:#fff;border-radius:10px;padding:8px 10px;font-weight:700;cursor:pointer}
+.rsbtn:hover{background:#ffffff1f}
+.sheet.wide{width:min(640px,100%)}
+.dt-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.dt-head h3{margin:0}
+.dt-list{display:flex;flex-direction:column;gap:8px}
+.dt-row{border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:5px}
+.dt-row.has{border-color:var(--warn);background:var(--warn-soft)}
+.dt-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.dt-t{margin-left:auto;font-size:1.05rem}
+.dt-i{color:var(--muted);font-size:.86rem}
+.dt-obs{font-size:.9rem}.dt-obs small{color:var(--muted)}
+.dt-b{align-self:flex-start;padding:6px 12px;font-size:.85rem}
+.dt-ed{display:flex;flex-direction:column;gap:6px}.dt-ed textarea{width:100%}
+.dt-btns{display:flex;gap:8px}
+.oh-ob{color:var(--text);font-style:italic}
 .pendline{display:flex;align-items:center;gap:8px;font-size:.84rem;color:var(--muted);padding-top:6px;border-top:1px solid var(--line)}
 .pend .ok.nosale:disabled{opacity:.55;cursor:not-allowed}
 .pill.done{background:var(--ok-soft);color:var(--ok)}
@@ -797,7 +813,7 @@ function renderRstat(){
   var today=dayKey(Date.now()),td=S.sales.filter(function(x){return x.local===UI.local&&dayKey(x.ts)===today});
   var open=!!UI.rsopen;
   var det=open?'<div class="rsdet">'+PAYS.map(function(p){var l=td.filter(function(x){return x.pay===p[0]});return '<div><span>'+p[1]+' <i>'+l.length+'</i></span><b class="num">'+money(sum(l))+'</b></div>'}).join("")+'</div>':"";
-  rs.innerHTML='<button class="rshead" data-a="rstog" aria-expanded="'+open+'"><span><small>Hoy en '+LOCALES[UI.local].name.replace("Local ","")+'</small><b class="num">'+money(sum(td))+'</b><em>'+td.length+' venta'+(td.length===1?'':'s')+' · '+(open?'ocultar':'ver por medio de pago')+'</em></span><span class="car">'+(open?'▴':'▾')+'</span></button>'+det;
+  rs.innerHTML='<button class="rshead" data-a="rstog" aria-expanded="'+open+'"><span><small>Hoy en '+LOCALES[UI.local].name.replace("Local ","")+'</small><b class="num">'+money(sum(td))+'</b><em>'+td.length+' venta'+(td.length===1?'':'s')+' · '+(open?'ocultar':'ver por medio de pago')+'</em></span><span class="car">'+(open?'▴':'▾')+'</span></button>'+det+'<button class="rsbtn" data-a="rsdet">Ver operaciones y observaciones</button>';
 }
 function renderMP(){
   renderPend();
@@ -816,6 +832,19 @@ function renderMP(){
   el.innerHTML='<div class="mhead"><div><h2>Actividad de Mercado Pago <span class="tag2">'+(MPREAL()?"Real":"Simulado")+'</span></h2><div class="note">'+(MPREAL()?"Últimas 10 transferencias recibidas en tu cuenta. Tocá Actualizar para traer las nuevas.":"Últimas 10 transferencias recibidas. Actualizá como harías en la billetera.")+'</div></div><div class="mact"><button class="cta" data-a="mprefresh">Actualizar</button><small>'+(UI.mplast?'Actualizado '+UI.mplast:'Sin actualizar')+'</small></div></div>'
    +'<div class="mkp"><div><small>Recibido hoy</small><b class="num">'+money(totHoy)+'</b></div><div><small>Pendientes de acreditar</small><b class="num">'+pl.length+'</b></div></div>'
    +'<div class="mlist">'+(rows||'<div class="empty">Todavía no hay movimientos.</div>')+'</div>';
+}
+function openDetalle(){
+  var t0=startOfDay(0),lk=UI.local;
+  var l=S.sales.filter(function(x){return x.local===lk&&x.ts>=t0}).sort(function(a,b){return b.ts-a.ts});
+  var sc=document.querySelector(".sheet.wide"),top=sc?sc.scrollTop:0;
+  var rows=l.map(function(x){
+    var it=x.items.map(function(i){return (i.unit==="kg"?i.qty.toLocaleString("es-AR",{maximumFractionDigits:3})+" kg":i.qty+" u")+" "+i.name}).join(" · ");
+    var ob=x.obs?'<div class="dt-obs"><b>Observación:</b> '+String(x.obs.t).replace(/</g,"&lt;")+'<small> — '+x.obs.by+', '+hhmm(x.obs.ts)+'</small></div>':"";
+    var ed=UI.obsEdit===x.id?'<div class="dt-ed"><textarea id="obs-t" rows="2" placeholder="Ej: error de tipeo, el monto correcto era $ 4.200">'+(x.obs?String(x.obs.t).replace(/</g,"&lt;"):"")+'</textarea><div class="dt-btns"><button class="cta" data-a="obssave" data-v="'+x.id+'">Guardar</button><button class="ghost" data-a="obscancel">Cancelar</button></div></div>':'<button class="ghost dt-b" data-a="obsedit" data-v="'+x.id+'">'+(x.obs?"Editar observación":"Agregar observación")+'</button>';
+    return '<div class="dt-row'+(x.obs?" has":"")+'"><div class="dt-h"><b>'+hhmm(x.ts)+'</b><span>'+x.emp+'</span><span class="pill mute">'+payName(x.pay)+'</span><b class="num dt-t">'+money(x.total)+'</b></div><div class="dt-i">'+it+'</div>'+(x.pay==="tr"?'<small>'+(x.acr?"Acreditada por "+x.acr.by+" "+hhmm(x.acr.ts):"Transferencia sin acreditar")+'</small>':'')+ob+ed+'</div>'}).join("");
+  sheet('<div class="dt-head"><div><h3>Operaciones de hoy · '+LOCALES[lk].name.replace("Local ","")+'</h3><div class="note">'+l.length+' operaciones · '+money(sum(l))+'. Si hubo un error de tipeo, dejalo anotado en la operación.</div></div><button class="ghost" data-a="closew">Cerrar</button></div><div class="dt-list">'+(rows||'<div class="empty">Todavía no hay operaciones hoy.</div>')+'</div>');
+  var sh=document.querySelector(".sheet");sh.classList.add("wide");sh.scrollTop=top;
+  var ta=$("obs-t");if(ta)ta.focus();
 }
 function closeWeigh(){$("layer").innerHTML=""}
 
@@ -861,11 +890,14 @@ function viewHoy(){
   var pl=trPend.map(function(x){return '<div class="oh-row"><div><b class="num">'+money(x.total)+'</b><small>'+x.emp+' · '+hhmm(x.ts)+' · '+LOCALES[x.local].name.replace("Local ","")+(am[x.id]?' · <em class="ok2">ya llegó, falta acreditar</em>':' · esperando el pago')+'</small></div></div>'}).join("");
   var ol=orphan.map(function(e){return '<div class="oh-row"><div><b class="num">+'+money(e.amount)+'</b><small>'+hhmm(e.ts)+' · llegó plata sin venta cargada</small></div></div>'}).join("");
   var pf=pendFact(),low=lowStock();
+  var obsL=S.sales.filter(function(x){return x.ts>=t0&&inL(x)&&x.obs}).sort(function(a,b){return b.ts-a.ts});
+  var obsC=obsL.length?'<section class="oh-card"><h3>Observaciones de hoy</h3>'+obsL.map(function(x){return '<div class="oh-row"><div><b class="num">'+money(x.total)+' · '+payName(x.pay)+'</b><small>'+hhmm(x.ts)+' · '+x.emp+' · '+LOCALES[x.local].name.replace("Local ","")+'</small><small class="oh-ob">“'+String(x.obs.t).replace(/</g,"&lt;")+'” — '+x.obs.by+'</small></div></div>'}).join("")+'</section>':"";
   var alerts=[];
   var noCl=Object.keys(byLE).filter(function(k){var pp=k.split("|");return !S.closings.some(function(c){return c.ts>=t0&&c.local===pp[0]&&c.emp===pp[1]})}).length;
   if(trPend.length)alerts.push('<b>'+trPend.length+'</b> transferencia'+(trPend.length===1?'':'s')+' sin acreditar ('+money(sum(trPend))+')');
   if(orphan.length)alerts.push('<b>'+orphan.length+'</b> ingreso'+(orphan.length===1?'':'s')+' de Mercado Pago sin venta cargada');
   if(noCl)alerts.push('<b>'+noCl+'</b> turno'+(noCl===1?'':'s')+' sin cierre de caja');
+  if(obsL.length)alerts.push('<b>'+obsL.length+'</b> operación'+(obsL.length===1?'':'es')+' con observación del empleado');
   if(low.length)alerts.push('<b>'+low.length+'</b> producto'+(low.length===1?'':'s')+' con stock bajo');
   var al=alerts.length?'<div class="oh-alert"><b>Para revisar</b><ul>'+alerts.map(function(a){return '<li>'+a+'</li>'}).join("")+'</ul></div>':'<div class="oh-alert ok"><b>Todo en orden por ahora.</b></div>';
   var seg2=[["todos","Todos"]].concat(Object.keys(LOCALES).map(function(k){return [k,LOCALES[k].name.replace("Local ","")]})).map(function(o){return '<button data-a="hl" data-v="'+o[0]+'" aria-pressed="'+(hl===o[0])+'">'+o[1]+'</button>'}).join("");
@@ -876,7 +908,7 @@ function viewHoy(){
    +'<section class="oh-card"><h3>Cómo se cobró</h3><div class="oh-pays">'+pay+'</div></section>'
    +'<section class="oh-card"><h3>Cierres de caja de hoy</h3>'+(emp||'<div class="empty">Todavía no hay ventas hoy.</div>')+'</section>'
    +'<section class="oh-card"><h3>Transferencias</h3><div class="oh-pays two"><div class="oh-pay"><small>Acreditadas</small><b class="num">'+money(sum(trOk))+'</b><span>'+trOk.length+' hoy</span></div><div class="oh-pay"><small>Sin acreditar</small><b class="num">'+money(sum(trPend))+'</b><span>'+trPend.length+' venta'+(trPend.length===1?'':'s')+'</span></div></div>'+pl+ol+((pl||ol)?'':'<div class="empty">No hay transferencias pendientes ni ingresos sin venta.</div>')+'</section>'
-   +'<section class="oh-card"><h3>Facturación</h3><div class="oh-row"><div><b>'+pf.length+' venta'+(pf.length===1?'':'s')+' para facturar</b><small>Importe '+money(sum(pf))+' · últimos 7 días</small></div><div class="oh-st"><button class="ghost" data-a="tab" data-v="fact">Ver lista</button></div></div></section>'
+   +obsC+'<section class="oh-card"><h3>Facturación</h3><div class="oh-row"><div><b>'+pf.length+' venta'+(pf.length===1?'':'s')+' para facturar</b><small>Importe '+money(sum(pf))+' · últimos 7 días</small></div><div class="oh-st"><button class="ghost" data-a="tab" data-v="fact">Ver lista</button></div></div></section>'
    +'<div class="oh-links"><button class="ghost" data-a="tab" data-v="dueno">Análisis completo</button><button class="ghost" data-a="tab" data-v="precios">Precios</button><button class="ghost" data-a="tab" data-v="stock">Stock</button></div>'
    +'</div>';
 }
@@ -1105,6 +1137,10 @@ document.addEventListener("click",function(e){
     var np={id:id,name:nm,cat:$("np-c").value,unit:un,price:npr,min:un==="kg"?12:20,code:code,active:true};if(UI.tmpImg)np.img=UI.tmpImg;S.products.push(np);
     S.stock.centro[id]=ns;S.stock.malvinas[id]=ns;setProducts();save();closeWeigh();render();toast("Producto agregado: "+nm+" (código "+code+")");return}
   if(a==="goticket"){$("ticket").scrollIntoView({behavior:"smooth",block:"start"});return}
+  if(a==="rsdet"){UI.obsEdit=null;openDetalle();return}
+  if(a==="obsedit"){UI.obsEdit=v;openDetalle();return}
+  if(a==="obscancel"){UI.obsEdit=null;openDetalle();return}
+  if(a==="obssave"){var so=S.sales.filter(function(x){return x.id===v})[0];if(!so)return;var tx=($("obs-t").value||"").trim();if(tx)so.obs={t:tx,by:UI.emp||(CUR&&CUR.name),ts:Date.now()};else delete so.obs;UI.obsEdit=null;save();openDetalle();toast(tx?"Observación guardada":"Observación quitada");return}
   if(a==="hl"){UI.hl=v;render();return}
   if(a==="rstog"){UI.rsopen=!UI.rsopen;renderRstat();return}
   if(a==="cobrar"){
