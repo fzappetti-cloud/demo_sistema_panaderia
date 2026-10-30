@@ -685,8 +685,8 @@ function viewCaja(){
    +'<div class="frow"><div class="fld grow"><label for="f-prod">Producto</label><div class="pwrap"><span class="thumb" id="f-thumb"></span><input id="f-prod" type="text" list="plist" placeholder="Tocá un producto o escribí nombre / código" autocomplete="off"></div><datalist id="plist">'+opts+'</datalist></div>'
    +'<div class="fld"><label for="f-qty" id="f-qlbl">Peso o cantidad</label><input id="f-qty" type="text" inputmode="decimal" placeholder="0,350 o 350 g" autocomplete="off"></div>'
    +'<div class="fld"><label>Precio</label><output id="f-price" class="ro num">—</output></div><div class="fld"><label>Subtotal</label><output id="f-sub" class="ro num">—</output></div></div>'
-   +'<div class="dockrow"><div class="chips" id="f-quick"><span class="hint">Tocá un producto y después el peso: se agrega solo.</span></div>'
-   +'<div class="factions"><button class="cta" id="f-ok" data-a="fadd">Agregar</button><button class="ghost" id="f-cancel" data-a="fcancel" hidden>Cancelar edición</button><button class="ghost" data-a="libre">+ Otro</button></div></div></section>'
+   +'<div class="dockrow"><div class="chips" id="f-quick"><span class="hint">Tocá un producto, indicá peso o cantidad y apretá Agregar al ticket.</span></div>'
+   +'<div class="factions"><button class="cta" id="f-ok" data-a="fadd">Agregar al ticket</button><button class="ghost" id="f-cancel" data-a="fcancel" hidden>Cancelar edición</button><button class="ghost" data-a="libre">+ Otro</button></div></div></section>'
    +'<section class="catalog" aria-label="Catálogo"><div class="grid" id="grid"></div></section></div>'
    +'<div class="side"><div class="pend" id="pend"></div></div></div><div class="mobbar" id="mobbar"></div>';
 }
@@ -723,7 +723,6 @@ function quickAdd(p,q){
   renderTicket();toast("+ "+p.name+" · "+(p.unit==="kg"?qtyTxt({qty:q,unit:"kg"}):q+" u"))
 }
 function selectProd(pp){
-  if(UI.edit===null&&pp.unit==="u"){UI.sel=pp.id;$("f-prod").value=pp.name;$("f-qty").value="";syncForm();quickAdd(pp,1);return}
   $("f-prod").value=pp.name;UI.sel=pp.id;if(UI.edit===null)$("f-qty").value=pp.unit==="u"?"1":"";
   syncForm();renderGrid();$("f-qty").focus();$("f-qty").select();
 }
@@ -746,13 +745,13 @@ function syncForm(){
   var p=UI.sel?PBY[UI.sel]:null;
   var ql=$("f-qlbl"),pr=$("f-price"),sb=$("f-sub"),qk=$("f-quick");if(!ql)return;
   var th=$("f-thumb");if(th)th.innerHTML=p?pimg(p):"";
-  if(!p){ql.textContent="Peso o cantidad";pr.textContent="—";sb.textContent="—";qk.innerHTML='<span class="hint">Tocá un producto y después el peso: se agrega solo.</span>';return}
+  if(!p){ql.textContent="Peso o cantidad";pr.textContent="—";sb.textContent="—";qk.innerHTML='<span class="hint">Tocá un producto, indicá peso o cantidad y apretá Agregar al ticket.</span>';return}
   ql.textContent=p.unit==="kg"?"Peso (kg)":"Cantidad (u)";
   $("f-qty").placeholder=p.unit==="kg"?"0,350 o 350 g":"1";
   pr.textContent=money(p.price)+(p.unit==="kg"?" /kg":" c/u");
   var q=parseQty($("f-qty").value,p.unit);
   sb.textContent=q>0?money(Math.round(p.price*q)):"—";
-  qk.innerHTML=(p.unit==="kg"?[["100 g","0.1"],["250 g","0.25"],["500 g","0.5"],["750 g","0.75"],["1 kg","1"],["1,5 kg","1.5"],["2 kg","2"]]:[["+1","1"],["+3","3"],["+½ docena","6"],["+Docena","12"]]).map(function(c){return '<button data-a="fq" data-v="'+c[1]+'">'+c[0]+'</button>'}).join("");
+  qk.innerHTML=(p.unit==="kg"?[["100 g","0.1"],["250 g","0.25"],["500 g","0.5"],["750 g","0.75"],["1 kg","1"],["1,5 kg","1.5"],["2 kg","2"]]:[["1 u","1"],["3 u","3"],["½ docena","6"],["Docena","12"]]).map(function(c){return '<button data-a="fq" data-v="'+c[1]+'">'+c[0]+'</button>'}).join("");
 }
 function resetForm(){UI.edit=null;UI.sel=null;$("f-prod").value="";$("f-qty").value="";$("ftitle").textContent="Cargar producto";$("f-ok").textContent="Agregar al ticket";$("f-cancel").hidden=true;syncForm()}
 function formAdd(){
@@ -1265,7 +1264,6 @@ document.addEventListener("click",function(e){
   if(a==="prod"){selectProd(PBY[v]);return}
   if(a==="fq"){
     var pq=UI.sel?PBY[UI.sel]:null;
-    if(pq&&UI.edit===null){quickAdd(pq,parseFloat(v));return}
     $("f-qty").value=v;syncForm();$("f-qty").focus();return}
   if(a==="fadd"){formAdd();return}
   if(a==="fcancel"){resetForm();renderTicket();return}
