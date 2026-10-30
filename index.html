@@ -502,6 +502,17 @@ th.r,td.r{text-align:right;padding-right:0}
  .catbar .cats button{padding:9px 10px;font-size:.9rem}
  .tcol .rstat{display:none}
 }
+
+/* ticket ampliable */
+.ticket-head h2{margin:0}.tkn{font-size:.78rem;font-weight:600;color:var(--muted);margin-left:6px}
+.tkbtns{display:flex;gap:6px}
+.ticket [data-a=tkx]:not(button){cursor:pointer}
+.ticket.xl{position:fixed;z-index:25;left:50%;top:50%;transform:translate(-50%,-50%);width:min(560px,94vw);max-height:92vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.4);padding:18px;gap:12px}
+.ticket.xl .lines{flex:none;max-height:calc(92vh - 290px);min-height:60px;overflow:auto}
+.ticket.xl .line{padding:10px 0}
+.ticket.xl .lact button{padding:4px 11px;font-size:.84rem}
+.ticket.xl .total{font-size:1.9rem}
+body.tkopen::after{content:"";position:fixed;inset:0;background:rgba(15,17,18,.55);z-index:24}
 </style>
 
 </head><body>
@@ -774,14 +785,17 @@ function paidBlock(){
 }
 function renderTicket(){
   var el=$("ticket");if(!el)return;
+  if(!UI.cart.length)UI.tkx=false;
+  el.className="ticket"+(UI.tkx?" xl":"");document.body.classList.toggle("tkopen",!!UI.tkx);
   var lines=UI.cart.map(function(l,i){
     return '<div class="line'+(UI.edit===i?" editing":"")+'"><div class="lname">'+(PBY[l.pid]?'<span class="th">'+pimg(PBY[l.pid])+'</span>':"")+'<div><div>'+l.name+'</div><div class="q num">'+(l.unit==="kg"?qtyTxt(l):l.qty+" u")+' × '+money(l.price)+(l.unit==="kg"?"/kg":"")+'</div></div></div><b class="num">'+money(l.amount)+'</b><div class="lact"><button data-a="edit" data-v="'+i+'">Editar</button><button class="del" data-a="del" data-v="'+i+'">Eliminar</button></div></div>';
   }).join("");
   var pay=PAYS.map(function(p){return '<button data-a="pay" data-v="'+p[0]+'" aria-pressed="'+(UI.pay===p[0])+'">'+p[1]+'</button>'}).join("");
   var vb=paidBlock();
-  el.innerHTML='<div class="ticket-head"><h2>Ticket</h2><button class="ghost" data-a="clear"'+(UI.cart.length?"":" disabled")+'>Vaciar</button></div>'
-   +'<div class="lines">'+(lines||'<div class="empty">Todavía no cargaste productos.</div>')+'</div>'
-   +'<div class="total"><span>Total</span><span class="num">'+money(cartTotal())+'</span></div>'
+  var nit=UI.cart.length,tx=(nit&&!UI.tkx)?' data-a="tkx" title="Tocá para ampliar el detalle"':'';
+  el.innerHTML='<div class="ticket-head"><h2'+tx+'>Ticket'+(nit?' <small class="tkn">'+nit+' ítem'+(nit===1?'':'s')+'</small>':'')+'</h2><span class="tkbtns">'+(nit?'<button class="ghost" data-a="tkx">'+(UI.tkx?'Cerrar':'Ampliar')+'</button>':'')+'<button class="ghost" data-a="clear"'+(UI.cart.length?"":" disabled")+'>Vaciar</button></span></div>'
+   +'<div class="lines"'+tx+'>'+(lines||'<div class="empty">Todavía no cargaste productos.</div>')+'</div>'
+   +'<div class="total"'+tx+'><span>Total</span><span class="num">'+money(cartTotal())+'</span></div>'
    +'<div class="pay" role="group" aria-label="Medio de pago">'+pay+'</div>'+vb
    +'<label class="chk"><input type="checkbox" id="fc"'+(UI.fc?" checked":"")+'> El cliente pide factura</label>'
    +'<button class="cta" data-a="cobrar"'+(UI.cart.length?"":" disabled")+'>Cobrar '+(UI.cart.length?money(cartTotal()):"")+'</button>';
@@ -1195,6 +1209,7 @@ function render(){
 }
 
 document.addEventListener("click",function(e){
+  if(UI.tkx&&!e.target.closest("#ticket")&&!e.target.closest("#layer")){UI.tkx=false;renderTicket();return}
   var el=e.target.closest("[data-a]");if(!el)return;
   var a=el.getAttribute("data-a"),v=el.getAttribute("data-v");
   if(a==="mpmode"){if(v==="real"&&!mpKey()){askKey();return}setPref(a,v);return}
@@ -1258,6 +1273,7 @@ document.addEventListener("click",function(e){
   if(a==="libok"){var lp=parseNum($("lib-p").value);if(isNaN(lp)||lp<=0){toast("Escribí el importe");return}UI.cart.push({pid:"libre",name:($("lib-n").value||"").trim()||"Varios",unit:"u",qty:1,price:lp,amount:lp,libre:true});closeWeigh();renderTicket();return}
   if(a==="edit"){startEdit(+v);return}
   if(a==="del"){UI.cart.splice(+v,1);if(UI.edit===+v)resetForm();else if(UI.edit!==null&&UI.edit>+v)UI.edit--;renderTicket();return}
+  if(a==="tkx"){UI.tkx=!UI.tkx;renderTicket();return}
   if(a==="clear"){UI.cart=[];UI.paid=null;if(UI.edit!==null)resetForm();renderTicket();return}
   if(a==="pay"){UI.pay=v;UI.paid=null;renderTicket();return}
   if(a==="paid"){UI.paid=+v;renderTicket();return}
@@ -1347,7 +1363,7 @@ document.addEventListener("input",function(e){
   if(t.id==="stq"){UI.stq=t.value;renderStock()}
 });
 document.addEventListener("keydown",function(e){
-  if(e.key==="Escape"){if(e.target.id==="q"&&UI.q){UI.q="";e.target.value="";renderGrid();return}closeWeigh();return}
+  if(e.key==="Escape"){if(UI.tkx&&!$("layer").innerHTML){UI.tkx=false;renderTicket();return}if(e.target.id==="q"&&UI.q){UI.q="";e.target.value="";renderGrid();return}closeWeigh();return}
   if(e.key==="/"&&!/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)&&$("q")){e.preventDefault();$("q").focus();return}
   if(e.key!=="Enter")return;
   if(e.target.id==="q"){e.preventDefault();var sl=searchList();if(!sl.length){toast("No hay productos que coincidan");return}selectProd(sl[0]);UI.q="";e.target.value="";renderGrid();return}
