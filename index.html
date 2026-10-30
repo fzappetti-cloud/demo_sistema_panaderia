@@ -513,6 +513,12 @@ th.r,td.r{text-align:right;padding-right:0}
 .ticket.xl .lact button{padding:4px 11px;font-size:.84rem}
 .ticket.xl .total{font-size:1.9rem}
 body.tkopen::after{content:"";position:fixed;inset:0;background:rgba(15,17,18,.55);z-index:24}
+
+.dvbox{border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--surface2)}
+.dvbox h3{margin:0;font-size:.95rem;display:flex;align-items:center;gap:6px}
+.dvbox .note{font-size:.8rem;margin-bottom:4px}
+.dvhint{font-size:.82rem;color:var(--muted);background:var(--surface2);border:1px dashed var(--line);border-radius:8px;padding:6px 8px}
+@media (min-width:601px) and (max-height:640px){.tcol .rstat{display:none}}
 </style>
 
 </head><body>
@@ -646,7 +652,7 @@ function load(){
   try{var raw=localStorage.getItem(LS);if(raw)S=JSON.parse(raw)}catch(e){}
   if(!S||!S.sales||!S.stock){S=mem||seedData()}
   if(!S.products)S.products=DEFAULT_PRODUCTS.map(function(p){return Object.assign({},p)});
-  S.sales.forEach(function(x){if(x.pay==="tr"&&x.acr===undefined)x.acr={ts:x.ts+60000,by:x.emp,auto:true}});
+  S.sales.forEach(function(x){if(x.pay==="tr"&&x.acr===undefined)x.acr={ts:x.ts+60000,by:x.emp,auto:true};if(x.pay==="de"&&x.dv===undefined)x.dv={ts:x.ts,by:x.emp,auto:true}});
   if(!S.z1){S.sales=[];S.closings=[];S.mpFeed=[];S.mpN=0;S.n=0;if(S.fcfg)S.fcfg.last=0;S.z1=1;save()}
   if(!S.users)S.users=USERS.map(function(u){return {u:u.u,pw:u.pw,name:u.name,role:u.role,local:u.local||"",act:true}});
   if(!S.perm)S.perm={empleado:ALLOW.empleado.slice(),supervisor:ALLOW.supervisor.slice()};
@@ -802,6 +808,7 @@ function renderTicket(){
   renderMP();
 }
 function isPend(x){return x.pay==="tr"&&!x.acr}
+function dvList(){return S.sales.filter(function(x){return x.local===UI.local&&x.pay==="de"&&!x.dv}).sort(function(a,b){return a.ts-b.ts})}
 function pendList(){return S.sales.filter(function(x){return x.local===UI.local&&isPend(x)}).sort(function(a,b){return a.ts-b.ts})}
 function arrivedMap(){
   var used={},map={},l=pendList();
@@ -830,6 +837,8 @@ function mpRefreshReal(){
 function renderPend(){
   var el=$("pend");if(!el)return;
   var l=pendList().reverse(),am=arrivedMap(),today=dayKey(Date.now());
+  var dl=dvList().reverse();
+  var drows=dl.map(function(x){return '<div class="crow nw"><div><b class="num">'+money(x.total)+'</b><small>'+hhmm(x.ts)+' · '+x.emp+' · débito</small></div><div class="mst"><button class="ok" data-a="dvok" data-v="'+x.id+'">Validar pago</button></div></div>'}).join("");
   var fm=S.mpFeed.filter(function(e){return !!e.real===MPREAL()}).sort(function(a,b){return b.ts-a.ts}).slice(0,6);
   var frows=fm.map(function(e){
     var st,sale=null;
@@ -841,6 +850,7 @@ function renderPend(){
   var prow=l.map(function(x){var ar=!!am[x.id];return '<div class="prow'+(ar?" arrived":"")+'"><div><b class="num">'+money(x.total)+'</b><small>'+hhmm(x.ts)+' · '+x.emp+(ar?' · <em>Ya llegó</em>':'')+'</small></div><button class="ok" data-a="acr" data-v="'+x.id+'">Acreditada</button></div>'}).join("");
   el.className="pend live"+(Object.keys(am).length?" has":"");
   el.innerHTML='<div class="mpsw"><span>Mercado Pago</span>'+seg("mpmode",[["sim","Simulado"],["real","Real"]])+'</div>'
+   +(dl.length?'<div class="dvbox"><h3>Débitos por validar <span class="cnt2">'+dl.length+'</span></h3><div class="note">Validá cada pago cuando el posnet lo apruebe.</div><div class="clist">'+drows+'</div></div>':'')
    +'<div class="livehead"><h3>Transferencias recibidas</h3><div class="mact"><button class="cta" data-a="mprefresh">Actualizar</button><small>'+(UI.mplast?'Actualizado '+UI.mplast:'Sin actualizar')+'</small></div></div>'
    +'<div class="clist">'+(frows||'<div class="empty">Tocá Actualizar para ver las que entraron.</div>')+'</div>'
    +(l.length?'<div class="pendline"><span class="cnt2">'+l.length+'</span> venta'+(l.length===1?'':'s')+' por transferencia esperando el pago</div>':'');
@@ -883,7 +893,7 @@ function openDetalle(){
     var it=x.items.map(function(i){return (i.unit==="kg"?i.qty.toLocaleString("es-AR",{maximumFractionDigits:3})+" kg":i.qty+" u")+" "+i.name}).join(" · ");
     var ob=x.obs?'<div class="dt-obs"><b>Observación:</b> '+String(x.obs.t).replace(/</g,"&lt;")+'<small> — '+x.obs.by+', '+hhmm(x.obs.ts)+'</small></div>':"";
     var ed=UI.obsEdit===x.id?'<div class="dt-ed"><textarea id="obs-t" rows="2" placeholder="Ej: error de tipeo, el monto correcto era $ 4.200">'+(x.obs?String(x.obs.t).replace(/</g,"&lt;"):"")+'</textarea><div class="dt-btns"><button class="cta" data-a="obssave" data-v="'+x.id+'">Guardar</button><button class="ghost" data-a="obscancel">Cancelar</button></div></div>':'<button class="ghost dt-b" data-a="obsedit" data-v="'+x.id+'">'+(x.obs?"Editar observación":"Agregar observación")+'</button>';
-    return '<div class="dt-row'+(x.obs?" has":"")+'"><div class="dt-h"><b>'+hhmm(x.ts)+'</b><span>'+x.emp+'</span><span class="pill mute">'+payName(x.pay)+'</span><b class="num dt-t">'+money(x.total)+'</b></div><div class="dt-i">'+it+'</div>'+(x.pay==="tr"?'<small>'+(x.acr?"Acreditada por "+x.acr.by+" "+hhmm(x.acr.ts):"Transferencia sin acreditar")+'</small>':'')+ob+ed+'</div>'}).join("");
+    return '<div class="dt-row'+(x.obs?" has":"")+'"><div class="dt-h"><b>'+hhmm(x.ts)+'</b><span>'+x.emp+'</span><span class="pill mute">'+payName(x.pay)+(x.pay==="de"&&!x.dv?' · sin validar':'')+'</span><b class="num dt-t">'+money(x.total)+'</b></div><div class="dt-i">'+it+'</div>'+(x.pay==="tr"?'<small>'+(x.acr?"Acreditada por "+x.acr.by+" "+hhmm(x.acr.ts):"Transferencia sin acreditar")+'</small>':'')+ob+ed+'</div>'}).join("");
   sheet('<div class="dt-head"><div><h3>Operaciones de hoy · '+LOCALES[lk].name.replace("Local ","")+'</h3><div class="note">'+l.length+(l.length===all.length?'':' de '+all.length)+' operaciones · '+money(sum(l))+'. Si hubo un error de tipeo, dejalo anotado en la operación.</div></div><button class="ghost" data-a="closew">Cerrar</button></div>'+fb+'<div class="dt-list">'+(rows||'<div class="empty">'+(all.length?'No hay operaciones de este tipo.':'Todavía no hay operaciones hoy.')+'</div>')+'</div>');
   var sh=document.querySelector(".sheet");sh.classList.add("wide");sh.scrollTop=top;
   var ta=$("obs-t");if(ta)ta.focus();
@@ -897,7 +907,7 @@ function viewCierre(){
   }
   var f=PAYS.map(function(p){var k=p[0];return '<div class="fld"><label for="c-'+k+'">'+p[1]+'</label><input id="c-'+k+'" class="num" inputmode="numeric" placeholder="Total contado" autocomplete="off"><small>'+PAYHINT[k]+'</small></div>'}).join("");
   return '<div class="blind"><div class="card"><div class="hero"><h2>Cierre ciego de '+UI.emp+'</h2><p>Declarás lo que contaste sin ver cuánto debería haber. El sistema compara y le avisa al dueño.</p></div>'
-   +(function(){var n=S.sales.filter(function(x){return x.local===UI.local&&isPend(x)}).length;return n?'<div class="warn2" role="alert"><b>Hay '+n+' transferencia'+(n===1?"":"s")+' sin acreditar.</b> Verificalas en Mercado Pago antes de cerrar.</div>':""})()+'<div class="fld"><label for="fondo">Fondo de caja al abrir</label><input id="fondo" class="num" inputmode="numeric" placeholder="$ 0" autocomplete="off"></div>'
+   +(function(){var n=S.sales.filter(function(x){return x.local===UI.local&&isPend(x)}).length;var nd=dvList().length;return (n?'<div class="warn2" role="alert"><b>Hay '+n+' transferencia'+(n===1?"":"s")+' sin acreditar.</b> Verificalas en Mercado Pago antes de cerrar.</div>':"")+(nd?'<div class="warn2" role="alert"><b>Hay '+nd+' pago'+(nd===1?"":"s")+' con débito sin validar.</b> Validalos en la Caja antes de cerrar.</div>':"")})()+'<div class="fld"><label for="fondo">Fondo de caja al abrir</label><input id="fondo" class="num" inputmode="numeric" placeholder="$ 0" autocomplete="off"></div>'
    +'<div class="row2">'+f+'</div>'
    +'<div class="fld"><label for="obs">Observaciones o motivos de diferencia</label><textarea id="obs" rows="2" placeholder="Opcional"></textarea></div>'
    +'<button class="cta" data-a="cerrar">Finalizar turno y enviar arqueo</button></div></div>';
@@ -937,6 +947,8 @@ function viewHoy(){
   var alerts=[];
   var noCl=Object.keys(byLE).filter(function(k){var pp=k.split("|");return !S.closings.some(function(c){return c.ts>=t0&&c.local===pp[0]&&c.emp===pp[1]})}).length;
   if(trPend.length)alerts.push('<b>'+trPend.length+'</b> transferencia'+(trPend.length===1?'':'s')+' sin acreditar ('+money(sum(trPend))+')');
+  var dePend=td.filter(function(x){return x.pay==="de"&&!x.dv});
+  if(dePend.length)alerts.push('<b>'+dePend.length+'</b> pago'+(dePend.length===1?'':'s')+' con débito sin validar ('+money(sum(dePend))+')');
   if(orphan.length)alerts.push('<b>'+orphan.length+'</b> ingreso'+(orphan.length===1?'':'s')+' de Mercado Pago sin venta cargada');
   if(noCl)alerts.push('<b>'+noCl+'</b> turno'+(noCl===1?'':'s')+' sin cierre de caja');
   if(obsL.length)alerts.push('<b>'+obsL.length+'</b> operación'+(obsL.length===1?'':'es')+' con observación del empleado');
@@ -1215,6 +1227,7 @@ document.addEventListener("click",function(e){
   if(a==="mpkeyok"){var kv=($("mpkey").value||"").trim();if(!kv){toast("Escribí la clave");return}try{localStorage.setItem("lospinos-mpkey",kv)}catch(e){}closeWeigh();setPref("mpmode","real");return}
   if(a==="theme"||a==="view"){setPref(a,v);return}
   if(a==="logout"){logout();return}
+  if(a==="dvok"){var sd=S.sales.filter(function(x){return x.id===v})[0];if(!sd)return;sd.dv={ts:Date.now(),by:UI.emp};save();renderTicket();renderChrome();renderRstat();toast("Pago con débito validado · "+money(sd.total));return}
   if(a==="acr"){var sx=S.sales.filter(function(x){return x.id===v})[0];if(!sx)return;linkSale(sx);save();renderTicket();renderChrome();toast("Acreditada · "+money(sx.total));return}
   if(a==="acrfeed"){var fe=S.mpFeed.filter(function(x){return x.id===v})[0];var sa=fe&&pendList().filter(function(x){return x.total===fe.amount})[0];if(!sa){toast("No hay una venta pendiente por ese monto");return}sa.acr={ts:Date.now(),by:UI.emp,op:""};fe.sid=sa.id;save();renderTicket();renderChrome();toast("Acreditada · "+money(sa.total));return}
   if(a==="mprefresh"&&MPREAL()){mpRefreshReal();return}
@@ -1306,8 +1319,8 @@ document.addEventListener("click",function(e){
     if(UI.fc&&!UI.feGo){sheet('<div><h3>Factura al cliente</h3><div class="note">Venta de '+money(cartTotal())+' · '+payName(UI.pay)+'. Si el cliente da su documento, la factura sale a su nombre. Si no, sale a Consumidor Final, sin nombre.</div></div><div class="fld"><label for="cf-t">Tipo de documento</label><select id="cf-t"><option>DNI</option><option>CUIT</option></select></div><div class="fld"><label for="cf-n">Número de documento (opcional)</label><input id="cf-n" class="num" inputmode="numeric" autocomplete="off" placeholder="Sin guiones"></div><div class="fld"><label for="cf-nm">Nombre o razón social (opcional, solo si dio el documento)</label><input id="cf-nm" type="text" autocomplete="off"></div><button class="cta" data-a="cobfe">Cobrar y registrar factura</button><button class="ghost" data-a="closew">Volver sin cobrar</button>');return}
     var tot=cartTotal(),fc=UI.fc;
     UI.cart.forEach(function(l){if(!PBY[l.pid])return;var cur=S.stock[UI.local][l.pid];S.stock[UI.local][l.pid]=Math.max(0,Math.round((cur-l.qty)*1000)/1000)});
-    S.sales.push({id:"s"+(S.n++),ts:Date.now(),local:UI.local,emp:UI.emp,items:UI.cart.map(function(l){return {pid:l.pid,name:l.name,unit:l.unit,qty:l.qty,price:l.price,amount:l.amount}}),total:tot,pay:UI.pay,fc:fc,facturada:false,acr:UI.pay==="tr"?null:undefined});
-    var vuelto=(UI.pay==="ef"&&UI.paid!=null&&UI.paid>=tot)?UI.paid-tot:0;var ns0=S.sales[S.sales.length-1],feGo=UI.feGo;UI.feGo=null;var fe0=feGo?emitFe(ns0,feGo.rec):null;save();UI.cart=[];UI.fc=false;UI.paid=null;renderChrome();renderTicket();renderRstat();toast(fe0?"Venta cobrada y factura "+fe0.tipo+" "+feNum(fe0)+" registrada (demo)":"Venta registrada · "+money(tot)+" · "+payName(UI.pay)+(vuelto?" · Vuelto "+money(vuelto):""));if(fe0)openFactura(ns0.id);return}
+    S.sales.push({id:"s"+(S.n++),ts:Date.now(),local:UI.local,emp:UI.emp,items:UI.cart.map(function(l){return {pid:l.pid,name:l.name,unit:l.unit,qty:l.qty,price:l.price,amount:l.amount}}),total:tot,pay:UI.pay,fc:fc,facturada:false,acr:UI.pay==="tr"?null:undefined,dv:UI.pay==="de"?null:undefined});
+    var vuelto=(UI.pay==="ef"&&UI.paid!=null&&UI.paid>=tot)?UI.paid-tot:0;var ns0=S.sales[S.sales.length-1],feGo=UI.feGo;UI.feGo=null;var fe0=feGo?emitFe(ns0,feGo.rec):null;save();UI.cart=[];UI.fc=false;UI.paid=null;renderChrome();renderTicket();renderRstat();toast(fe0?"Venta cobrada y factura "+fe0.tipo+" "+feNum(fe0)+" registrada (demo)":"Venta registrada · "+money(tot)+" · "+payName(UI.pay)+(UI.pay==="de"?" · falta validar el pago":"")+(vuelto?" · Vuelto "+money(vuelto):""));if(fe0)openFactura(ns0.id);return}
   if(a==="cerrar"){
     var cnt={},ok=true;
     PAYS.forEach(function(p){var n=parseNum($("c-"+p[0]).value);if(isNaN(n))ok=false;cnt[p[0]]=n});
